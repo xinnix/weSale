@@ -23,9 +23,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private readonly password?: string;
 
   constructor(private configService: ConfigService) {
-    this.host = this.configService.get<string>('REDIS_HOST') || 'localhost';
-    this.port = this.configService.get<number>('REDIS_PORT') || 6379;
-    this.password = this.configService.get<string>('REDIS_PASSWORD');
+    this.host = this.configService?.get<string>('REDIS_HOST') || 'localhost';
+    this.port = this.configService?.get<number>('REDIS_PORT') || 6379;
+    this.password = this.configService?.get<string>('REDIS_PASSWORD');
   }
 
   async onModuleInit() {

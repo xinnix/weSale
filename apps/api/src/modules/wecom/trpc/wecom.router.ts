@@ -252,6 +252,12 @@ export const wecomRouter = {
     if (!config) throw new Error('WecomConfig 不存在');
 
     const accessToken = await wecomApiService.getAccessToken(config.corpId, config.secret);
-    return wecomApiService.syncKfMessage(accessToken, input.kfAccount, input.cursor, input.limit);
+    return wecomApiService.syncKfMessage(
+      accessToken,
+      input.openKfId,
+      input.cursor,
+      input.token,
+      input.limit,
+    );
   }),
 };

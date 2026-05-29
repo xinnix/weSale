@@ -22,7 +22,10 @@ import { json } from 'express';
 import helmet from 'helmet';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
+
+  // 启用 NestJS 优雅关闭钩子，确保 watch 模式重启时旧进程完全释放端口
+  app.enableShutdownHooks();
 
   const port = process.env.PORT || 3000;
   const isProduction = process.env.NODE_ENV === 'production';
@@ -61,21 +64,17 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
   });
 
-  // Body size limit + raw body capture for WeChat payment callbacks
+  // Body size limit + raw body capture for WeChat callbacks (XML body)
   app.use(
     json({
       limit: '10mb',
       verify: (req: any, _res, buf) => {
-        if (
-          req.url?.includes('/payments/wechat/callback') ||
-          req.url?.includes('/payments/wechat/refund-callback') ||
-          req.url?.includes('/wecom/callback')
-        ) {
-          req.rawBody = buf.toString();
-        }
+        req.rawBody = buf.toString();
       },
     }),
   );
+  // 额外捕获 text/xml 类型的原始 body（微信回调用 XML）
+  app.use(express.text({ type: 'text/xml', limit: '10mb' }));
 
   // 配置静态文件服务（用于访问上传的文件）
   const uploadPath = process.env.UPLOAD_PATH || path.resolve(__dirname, '../../../uploads');
@@ -114,6 +113,7 @@ async function bootstrap() {
   );
 
   await app.listen(port);
+
   console.log(`Backend started: http://localhost:${port}/trpc`);
   console.log(`REST API: http://localhost:${port}/api`);
 }

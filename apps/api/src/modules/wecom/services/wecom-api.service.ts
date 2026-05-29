@@ -64,18 +64,43 @@ export class WecomApiService {
   }
 
   /**
-   * 获取客服状态
-   * POST /cgi-bin/kf/service/state
+   * 获取客服会话状态
+   * POST /cgi-bin/kf/service_state/get
    */
   async getKfServiceState(
     accessToken: string,
+    openKfId: string,
     externalUserId: string,
-    kfAccount: string,
   ): Promise<any> {
-    return this.post(`${WECOM_API_BASE}/kf/service/state?access_token=${accessToken}`, {
+    return this.post(`${WECOM_API_BASE}/kf/service_state/get?access_token=${accessToken}`, {
+      open_kfid: openKfId,
       external_userid: externalUserId,
-      kf_account: kfAccount,
     });
+  }
+
+  /**
+   * 变更客服会话状态
+   * POST /cgi-bin/kf/service_state/trans
+   */
+  async transKfServiceState(
+    accessToken: string,
+    openKfId: string,
+    externalUserId: string,
+    serviceState: number,
+    servicerUserid?: string,
+  ): Promise<any> {
+    const params: Record<string, any> = {
+      open_kfid: openKfId,
+      external_userid: externalUserId,
+      service_state: serviceState,
+    };
+    if (servicerUserid) {
+      params.servicer_userid = servicerUserid;
+    }
+    return this.post(
+      `${WECOM_API_BASE}/kf/service_state/trans?access_token=${accessToken}`,
+      params,
+    );
   }
 
   /**
@@ -92,16 +117,20 @@ export class WecomApiService {
    */
   async syncKfMessage(
     accessToken: string,
-    kfAccount: string,
+    openKfId: string,
     cursor?: string,
+    token?: string,
     limit = 1000,
   ): Promise<any> {
     const params: Record<string, any> = {
-      kf_account: kfAccount,
+      open_kfid: openKfId,
       limit,
     };
     if (cursor) {
       params.cursor = cursor;
+    }
+    if (token) {
+      params.token = token;
     }
     return this.post(`${WECOM_API_BASE}/kf/sync_msg?access_token=${accessToken}`, params);
   }

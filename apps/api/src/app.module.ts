@@ -16,6 +16,7 @@ import { WechatModule } from './modules/wechat/wechat.module';
 import { PaymentModule } from './modules/payment/module';
 import { AgentsModule } from './modules/agents/module';
 import { WecomModule } from './modules/wecom/module';
+import { WechatKfModule } from './modules/wechat-kf/module';
 // 全局拦截器
 import { TransformInterceptor } from './core/interceptors/transform.interceptor';
 import { FileStorageService } from './shared/services/file-storage.service';
@@ -44,6 +45,7 @@ import { FileStorageService } from './shared/services/file-storage.service';
     PaymentModule,
     AgentsModule,
     WecomModule,
+    WechatKfModule,
   ],
   providers: [
     Reflector,

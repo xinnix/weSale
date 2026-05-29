@@ -10,6 +10,7 @@ import { uploadRouter } from '../modules/upload/trpc/upload.router';
 import { paymentRouter } from '../modules/payment/trpc/payment.router';
 import { agentsRouter } from '../modules/agents/trpc/agents.router';
 import { wecomRouter } from '../modules/wecom/trpc/wecom.router';
+import { wechatKfRouter } from '../modules/wechat-kf/trpc/wechat-kf.router';
 
 export const appRouter = router({
   auth: authRouter,
@@ -21,6 +22,7 @@ export const appRouter = router({
   payment: paymentRouter,
   agents: agentsRouter,
   wecom: wecomRouter,
+  wechatKf: wechatKfRouter,
 });
 
 export type AppRouter = typeof appRouter;
