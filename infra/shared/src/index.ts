@@ -364,8 +364,9 @@ export const SendKfMessageSchema = z.object({
 
 export const SyncKfMessageSchema = z.object({
   configId: z.string().min(1),
-  kfAccount: z.string().min(1),
+  openKfId: z.string().min(1),
   cursor: z.string().optional(),
+  token: z.string().optional(),
   limit: z.number().int().min(1).max(1000).optional().default(1000),
 });
 
@@ -374,3 +375,103 @@ export type UpdateWecomConfigInput = z.infer<typeof UpdateWecomConfigSchema>;
 export type SendMessageInput = z.infer<typeof SendMessageSchema>;
 export type SendKfMessageInput = z.infer<typeof SendKfMessageSchema>;
 export type SyncKfMessageInput = z.infer<typeof SyncKfMessageSchema>;
+
+// ============================================
+// 销售系统枚举 Schemas
+// ============================================
+
+export const IntentLevelSchema = z.enum(['UNKNOWN', 'LOW', 'MEDIUM', 'HIGH', 'CLOSING']);
+export const ContactStatusSchema = z.enum(['ACTIVE', 'CONVERTED', 'ESCALATED', 'ARCHIVED']);
+export const SessionStateSchema = z.enum([
+  'GREETING',
+  'NEEDS_DISCOVERY',
+  'PRODUCT_MATCH',
+  'OBJECTION_HANDLING',
+  'CLOSING',
+  'CONVERTED',
+  'ESCALATED',
+  'TIMED_OUT',
+]);
+export const MessageRoleSchema = z.enum(['user', 'assistant']);
+export const MessageTypeSchema = z.enum(['TEXT', 'IMAGE', 'LINK_CARD', 'SYSTEM_NOTE']);
+
+// ============================================
+// Contact Schemas
+// ============================================
+
+export const CreateContactSchema = z.object({
+  openId: z.string().min(1, 'openId 不能为空'),
+  unionId: z.string().optional(),
+  nickname: z.string().optional(),
+  avatarUrl: z.string().optional(),
+  phone: z.string().optional(),
+  utmSource: z.string().optional(),
+  utmMedium: z.string().optional(),
+  utmCampaign: z.string().optional(),
+  utmContent: z.string().optional(),
+});
+
+export const UpdateContactSchema = z.object({
+  nickname: z.string().optional(),
+  avatarUrl: z.string().optional(),
+  phone: z.string().optional(),
+  status: ContactStatusSchema.optional(),
+  intentLevel: IntentLevelSchema.optional(),
+});
+
+export const ContactListQuerySchema = z.object({
+  page: z.number().int().positive().optional(),
+  pageSize: z.number().int().positive().optional(),
+  search: z.string().optional(),
+  status: ContactStatusSchema.optional(),
+  intentLevel: IntentLevelSchema.optional(),
+});
+
+// ============================================
+// ConversationSession Schemas
+// ============================================
+
+export const CreateConversationSessionSchema = z.object({
+  contactId: z.string().min(1, 'contactId 不能为空'),
+  sessionKey: z.string().min(1, 'sessionKey 不能为空'),
+});
+
+export const UpdateConversationSessionSchema = z.object({
+  state: SessionStateSchema.optional(),
+  intentLevel: IntentLevelSchema.optional(),
+  turnCount: z.number().int().min(0).optional(),
+});
+
+// ============================================
+// ConversationMessage Schemas
+// ============================================
+
+export const CreateConversationMessageSchema = z.object({
+  sessionId: z.string().min(1, 'sessionId 不能为空'),
+  role: MessageRoleSchema,
+  type: MessageTypeSchema.optional().default('TEXT'),
+  content: z.string().min(1, '消息内容不能为空'),
+  aiIntentLevel: IntentLevelSchema.optional(),
+  aiConfidence: z.number().min(0).max(1).optional(),
+  sendPaymentCard: z.boolean().optional().default(false),
+  recommendedProductId: z.string().optional(),
+  escalationReason: z.string().optional(),
+  internalNote: z.string().optional(),
+});
+
+// ============================================
+// 销售系统类型导出
+// ============================================
+
+export type IntentLevel = z.infer<typeof IntentLevelSchema>;
+export type ContactStatus = z.infer<typeof ContactStatusSchema>;
+export type SessionState = z.infer<typeof SessionStateSchema>;
+export type MessageRole = z.infer<typeof MessageRoleSchema>;
+export type MessageType = z.infer<typeof MessageTypeSchema>;
+
+export type CreateContactInput = z.infer<typeof CreateContactSchema>;
+export type UpdateContactInput = z.infer<typeof UpdateContactSchema>;
+export type ContactListQueryInput = z.infer<typeof ContactListQuerySchema>;
+export type CreateConversationSessionInput = z.infer<typeof CreateConversationSessionSchema>;
+export type UpdateConversationSessionInput = z.infer<typeof UpdateConversationSessionSchema>;
+export type CreateConversationMessageInput = z.infer<typeof CreateConversationMessageSchema>;

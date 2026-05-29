@@ -295,3 +295,162 @@ model WecomEvent {
   @@map("wecom_events")
 }
 
+// ============================================
+// 销售系统核心枚举
+// ============================================
+enum IntentLevel {
+  UNKNOWN
+  LOW
+  MEDIUM
+  HIGH
+  CLOSING
+}
+
+enum ContactStatus {
+  ACTIVE
+  CONVERTED
+  ESCALATED
+  ARCHIVED
+}
+
+enum SessionState {
+  GREETING
+  NEEDS_DISCOVERY
+  PRODUCT_MATCH
+  OBJECTION_HANDLING
+  CLOSING
+  CONVERTED
+  ESCALATED
+  TIMED_OUT
+}
+
+enum MessageRole {
+  user
+  assistant
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VOICE
+  VIDEO
+  FILE
+  LOCATION
+  LINK_CARD
+  MINIPROGRAM
+  MENU
+  BUSINESS_CARD
+  EVENT
+  SYSTEM_NOTE
+}
+
+enum MessageOrigin {
+  CUSTOMER
+  SYSTEM
+  SERVICER
+}
+
+// ============================================
+// 访客档案 (Contact)
+// ============================================
+model Contact {
+  id              String        @id @default(cuid())
+  openId          String        @unique @map("open_id")
+  unionId         String?       @map("union_id")
+  nickname        String?
+  avatarUrl       String?       @map("avatar_url")
+  phone           String?
+  status          ContactStatus @default(ACTIVE)
+  intentLevel     IntentLevel   @default(UNKNOWN) @map("intent_level")
+  utmSource       String?       @map("utm_source")
+  utmMedium       String?       @map("utm_medium")
+  utmCampaign     String?       @map("utm_campaign")
+  utmContent      String?       @map("utm_content")
+  firstActiveAt   DateTime      @default(now()) @map("first_active_at")
+  lastActiveAt    DateTime      @default(now()) @map("last_active_at")
+  convertedAt     DateTime?     @map("converted_at")
+  paidAmountFen   Int?          @map("paid_amount_fen")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  sessions        ConversationSession[]
+
+  @@index([status])
+  @@index([intentLevel])
+  @@index([lastActiveAt])
+  @@index([utmSource])
+  @@map("contacts")
+}
+
+// ============================================
+// 对话会话 (ConversationSession)
+// ============================================
+model ConversationSession {
+  id              String        @id @default(cuid())
+  contactId       String        @map("contact_id")
+  openKfId        String        @map("open_kf_id")
+  sessionKey      String        @unique @map("session_key")
+  state           SessionState  @default(GREETING)
+  intentLevel     IntentLevel   @default(UNKNOWN) @map("intent_level")
+  turnCount       Int           @default(0) @map("turn_count")
+  lastActiveAt    DateTime      @default(now()) @map("last_active_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  contact         Contact       @relation(fields: [contactId], references: [id])
+  messages        ConversationMessage[]
+
+  @@index([contactId])
+  @@index([openKfId])
+  @@index([state])
+  @@index([lastActiveAt])
+  @@map("conversation_sessions")
+}
+
+// ============================================
+// 对话消息 (ConversationMessage)
+// ============================================
+model ConversationMessage {
+  id                    String        @id @default(cuid())
+  sessionId             String        @map("session_id")
+  role                  MessageRole
+  type                  MessageType   @default(TEXT)
+  origin                MessageOrigin @default(CUSTOMER)
+  content               String        @db.Text
+  kfMsgId               String?       @unique @map("kf_msg_id")
+  openKfId              String?       @map("open_kf_id")
+  externalUserId        String?       @map("external_user_id")
+  servicerUserId        String?       @map("servicer_user_id")
+  sendTime              DateTime?     @map("send_time")
+  aiIntentLevel         IntentLevel?  @map("ai_intent_level")
+  aiConfidence          Float?        @map("ai_confidence")
+  sendPaymentCard       Boolean       @default(false) @map("send_payment_card")
+  recommendedProductId  String?       @map("recommended_product_id")
+  escalationReason      String?       @map("escalation_reason")
+  internalNote          String?       @db.Text @map("internal_note")
+  createdAt             DateTime      @default(now()) @map("created_at")
+
+  session               ConversationSession @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId])
+  @@index([role])
+  @@index([origin])
+  @@index([openKfId])
+  @@index([externalUserId])
+  @@index([sendTime])
+  @@index([createdAt])
+  @@map("conversation_messages")
+}
+
+// ============================================
+// KF 消息同步游标 (KfSyncCursor)
+// ============================================
+model KfSyncCursor {
+  id        String   @id @default(cuid())
+  openKfId  String   @unique @map("open_kf_id")
+  cursor    String   @db.Text
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("kf_sync_cursors")
+}
+
