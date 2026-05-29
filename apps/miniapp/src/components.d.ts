@@ -7,12 +7,12 @@ export {}
 
 declare module 'vue' {
   export interface GlobalComponents {
-    AppFooter: (typeof import('./components/AppFooter.vue'))['default'];
-    AppLogos: (typeof import('./components/AppLogos.vue'))['default'];
-    CustomTabBar: (typeof import('./components/CustomTabBar.vue'))['default'];
-    GlobalLoading: (typeof import('./components/GlobalLoading.vue'))['default'];
-    HiCounter: (typeof import('./components/HiCounter.vue'))['default'];
-    InputEntry: (typeof import('./components/InputEntry.vue'))['default'];
-    NewsPopup: (typeof import('./components/NewsPopup.vue'))['default'];
+    AppFooter: typeof import('./components/AppFooter.vue')['default']
+    AppLogos: typeof import('./components/AppLogos.vue')['default']
+    CustomTabBar: typeof import('./components/CustomTabBar.vue')['default']
+    GlobalLoading: typeof import('./components/GlobalLoading.vue')['default']
+    HiCounter: typeof import('./components/HiCounter.vue')['default']
+    InputEntry: typeof import('./components/InputEntry.vue')['default']
+    NewsPopup: typeof import('./components/NewsPopup.vue')['default']
   }
 }

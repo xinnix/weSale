@@ -7,8 +7,11 @@ type _LocationUrl =
   "/pages/index" |
   "/pages/hi" |
   "/pages/login" |
+  "/pages/agents/chat" |
+  "/pages/agents/index" |
   "/pages/agreement/privacy-policy" |
   "/pages/agreement/user-agreement" |
+  "/pages/profile/index" |
   "/pages/coupon/detail" |
   "/pages/coupon/list" |
   "/pages/handler/index" |
@@ -16,7 +19,6 @@ type _LocationUrl =
   "/pages/merchant/detail" |
   "/pages/merchant/list" |
   "/pages/news/detail" |
-  "/pages/profile/index" |
   "/pages/qrcode/index" |
   "/pages/redemption/confirm" |
   "/pages/scan/index" |
@@ -27,7 +29,9 @@ interface NavigateToOptions {
 }
 interface RedirectToOptions extends NavigateToOptions {}
 
-interface SwitchTabOptions {}
+interface SwitchTabOptions {
+  
+}
 
 type ReLaunchOptions = NavigateToOptions | SwitchTabOptions;
 
@@ -38,6 +42,6 @@ declare interface Uni {
   reLaunch(options: UniNamespace.ReLaunchOptions & ReLaunchOptions): void;
 }
 
-declare module 'virtual:uni-pages' {
+declare module "virtual:uni-pages" {
   export type LocationUrl = _LocationUrl;
 }
