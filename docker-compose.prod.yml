@@ -53,6 +53,27 @@ services:
         max-size: '10m'
         max-file: '3'
 
+  landing:
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME:-opencode}-landing:${TAG:-latest}
+    container_name: ${PROJECT_NAME:-opencode}-landing-prod
+    env_file:
+      - 1panel.env
+    environment:
+      - TZ=Asia/Shanghai
+      - NEXT_PUBLIC_KF_URL=${NEXT_PUBLIC_KF_URL:-}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://api:3000}
+    ports:
+      - '${LANDING_PORT:-3001}:3001'
+    depends_on:
+      - api
+    networks:
+      - app-network
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+
 networks:
   app-network:
     driver: bridge

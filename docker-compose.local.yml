@@ -31,3 +31,18 @@ services:
     depends_on:
       - api
     restart: unless-stopped
+
+  landing:
+    build:
+      context: .
+      dockerfile: apps/landing/Dockerfile
+    image: ${PROJECT_NAME:-opencode}-landing:v1-local
+    container_name: ${PROJECT_NAME:-opencode}-landing-local
+    ports:
+      - '3001:3001'
+    env_file:
+      - 1panel.env
+    environment:
+      NEXT_PUBLIC_KF_URL: ${NEXT_PUBLIC_KF_URL:-}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+    restart: unless-stopped
