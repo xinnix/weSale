@@ -13,6 +13,7 @@ import {
   WechatOutlined,
   MessageOutlined,
   ThunderboltOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import { useState, useMemo } from 'react';
 import { useAuth } from '../auth';
@@ -31,6 +32,7 @@ const iconMap: Record<string, React.ReactNode> = {
   WechatOutlined: <WechatOutlined />,
   MessageOutlined: <MessageOutlined />,
   ThunderboltOutlined: <ThunderboltOutlined />,
+  TeamOutlined: <TeamOutlined />,
 };
 
 // prettier-ignore
@@ -65,6 +67,17 @@ const menuConfig = [
       { key: "/wecom/events", label: "事件记录", icon: "ThunderboltOutlined", permission: "menu:wecom" },
     ],
   },
+  {
+    key: "kf",
+    label: "客服管理",
+    icon: "MessageOutlined",
+    permission: null,
+    children: [
+      { key: "/kf/sessions", label: "会话管理", icon: "MessageOutlined", permission: "menu:kf" },
+      { key: "/kf/contacts", label: "访客管理", icon: "UserOutlined", permission: "menu:kf" },
+      { key: "/kf/accounts", label: "客服账号", icon: "TeamOutlined", permission: "menu:kf" },
+    ],
+  },
 ];
 
 export function AdminLayout() {
@@ -89,8 +102,7 @@ export function AdminLayout() {
   }));
 
   const filterMenuByPermission = (items: any[]): any[] => {
-    const hasSuperAdminRole =
-      user?.roles?.some((r: any) => r?.role?.slug === 'super_admin') || false;
+    const hasSuperAdminRole = user?.roles?.some((r: any) => r?.slug === 'super_admin') || false;
     if (hasSuperAdminRole) return items;
 
     return items

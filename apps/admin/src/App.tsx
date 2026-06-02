@@ -13,6 +13,7 @@ import { UserListPage, UserDetailPage } from './modules/user';
 import { RoleListPage, RoleDetailPage } from './modules/role';
 import { AgentListPage, AgentChatPage } from './modules/agents';
 import { WecomConfigListPage, WecomMessageListPage, WecomEventListPage } from './modules/wecom';
+import { ContactListPage, SessionListPage, SessionChatPage, KfAccountListPage } from './modules/kf';
 import { useMessageInitializer } from './shared/hooks/useMessageInitializer';
 // Create QueryClient outside component to prevent re-creation
 const queryClient = new QueryClient({
@@ -79,6 +80,8 @@ function AppContent() {
           { name: 'wecom.config', list: '/wecom' },
           { name: 'wecom.message', list: '/wecom/messages' },
           { name: 'wecom.event', list: '/wecom/events' },
+          { name: 'wechatKf.contact', list: '/kf/contacts' },
+          { name: 'wechatKf.session', list: '/kf/sessions' },
         ]}
       >
         <Routes>
@@ -97,6 +100,10 @@ function AppContent() {
             <Route path="wecom" element={<WecomConfigListPage />} />
             <Route path="wecom/messages" element={<WecomMessageListPage />} />
             <Route path="wecom/events" element={<WecomEventListPage />} />
+            <Route path="kf/contacts" element={<ContactListPage />} />
+            <Route path="kf/sessions" element={<SessionListPage />} />
+            <Route path="kf/sessions/:id" element={<SessionChatPage />} />
+            <Route path="kf/accounts" element={<KfAccountListPage />} />
           </Route>
           <Route path="/404" element={<NotFoundPage />} />
           <Route path="*" element={<NotFoundPage />} />
