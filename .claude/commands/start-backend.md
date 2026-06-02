@@ -4,6 +4,14 @@ description: 启动后端 API 服务（NestJS + tRPC）
 
 启动后端开发服务器，使用 Monitor 工具实时监控日志。
 
+**启动前检查端口占用：**
+
+先检查 3000 端口是否有进程占用，如果有则先停止：
+
+```bash
+lsof -ti:3000 | xargs kill -9 2>/dev/null || true
+```
+
 启动命令：
 
 ```typescript
