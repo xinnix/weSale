@@ -14,6 +14,7 @@ import { RoleListPage, RoleDetailPage } from './modules/role';
 import { AgentListPage, AgentChatPage } from './modules/agents';
 import { WecomConfigListPage, WecomMessageListPage, WecomEventListPage } from './modules/wecom';
 import { ContactListPage, SessionListPage, SessionChatPage, KfAccountListPage } from './modules/kf';
+import { LandingStatsPage } from './modules/landing-stats';
 import { useMessageInitializer } from './shared/hooks/useMessageInitializer';
 // Create QueryClient outside component to prevent re-creation
 const queryClient = new QueryClient({
@@ -104,6 +105,7 @@ function AppContent() {
             <Route path="kf/sessions" element={<SessionListPage />} />
             <Route path="kf/sessions/:id" element={<SessionChatPage />} />
             <Route path="kf/accounts" element={<KfAccountListPage />} />
+            <Route path="landing-stats" element={<LandingStatsPage />} />
           </Route>
           <Route path="/404" element={<NotFoundPage />} />
           <Route path="*" element={<NotFoundPage />} />
