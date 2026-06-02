@@ -78,6 +78,15 @@ const menuConfig = [
       { key: "/kf/accounts", label: "客服账号", icon: "TeamOutlined", permission: "menu:kf" },
     ],
   },
+  {
+    key: "growth",
+    label: "增长分析",
+    icon: "ThunderboltOutlined",
+    permission: null,
+    children: [
+      { key: "/landing-stats", label: "落地页统计", icon: "ThunderboltOutlined", permission: null },
+    ],
+  },
 ];
 
 export function AdminLayout() {

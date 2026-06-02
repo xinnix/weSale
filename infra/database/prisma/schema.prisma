@@ -454,3 +454,24 @@ model KfSyncCursor {
   @@map("kf_sync_cursors")
 }
 
+// ============================================
+// Landing 页访问统计 (LandingPageView)
+// ============================================
+model LandingPageView {
+  id         String   @id @default(cuid())
+  path       String   @db.VarChar(255)
+  referrer   String?  @db.VarChar(512)
+  utmSource  String?  @db.VarChar(128) @map("utm_source")
+  utmMedium  String?  @db.VarChar(128) @map("utm_medium")
+  utmCampaign String? @db.VarChar(128) @map("utm_campaign")
+  sessionId  String?  @db.VarChar(64) @map("session_id")
+  userAgent  String?  @db.VarChar(512) @map("user_agent")
+  ipHash     String?  @db.VarChar(64) @map("ip_hash")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([path])
+  @@index([sessionId])
+  @@map("landing_page_views")
+}
+
