@@ -159,6 +159,20 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * 暴露 ioredis 客户端，用于 RPUSH 等高级操作
+   */
+  getClient() {
+    return this.client;
+  }
+
+  /**
+   * 检查 Redis 是否可用
+   */
+  isAvailable(): boolean {
+    return !!this.client && this.client.status === 'ready';
+  }
+
+  /**
    * 辅助方法：睡眠
    */
   private sleep(ms: number): Promise<void> {

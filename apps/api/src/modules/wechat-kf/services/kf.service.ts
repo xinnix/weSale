@@ -1,7 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { RedisService } from '../../../shared/services/redis.service';
 import { WechatKfApiService } from './kf-api.service';
+import { SalesLlmService } from './sales-llm.service';
 
 /** sync_msg 返回的单条消息 */
 interface KfSyncMsg {
@@ -30,6 +32,19 @@ export interface KfCallbackEvent {
   openKfId: string;
 }
 
+/** 预映射的消息行，用于批量插入 */
+interface PreMappedMessage {
+  kfMsgId: string;
+  sessionKey: string;
+  externalUserId?: string;
+  role: 'user' | 'assistant';
+  origin: string;
+  type: string;
+  content: string;
+  sendTime: Date;
+  servicerUserId?: string;
+}
+
 const ORIGIN_MAP: Record<number, 'CUSTOMER' | 'SYSTEM' | 'SERVICER'> = {
   3: 'CUSTOMER',
   4: 'SYSTEM',
@@ -51,18 +66,27 @@ const MSGTYPE_MAP: Record<string, string> = {
 };
 
 @Injectable()
-export class WechatKfService {
+export class WechatKfService implements OnModuleDestroy {
   private readonly logger = new Logger(WechatKfService.name);
+  private debounceTimers = new Map<string, NodeJS.Timeout>();
 
   constructor(
     private readonly kfApiService: WechatKfApiService,
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly redisService: RedisService,
+    private readonly salesLlmService: SalesLlmService,
   ) {}
 
-  /**
-   * 发送文本消息
-   */
+  onModuleDestroy() {
+    for (const [, timer] of this.debounceTimers) {
+      clearTimeout(timer);
+    }
+    this.debounceTimers.clear();
+  }
+
+  // ─── 公共方法（供 tRPC router 调用）────────────────────────────
+
   async sendText(openKfId: string, externalUserId: string, content: string): Promise<any> {
     try {
       const result = await this.kfApiService.sendText(openKfId, externalUserId, content);
@@ -74,9 +98,6 @@ export class WechatKfService {
     }
   }
 
-  /**
-   * 发送链接消息（用于支付卡片等）
-   */
   async sendLink(
     openKfId: string,
     externalUserId: string,
@@ -92,10 +113,6 @@ export class WechatKfService {
     }
   }
 
-  /**
-   * 解析 KF 回调 XML，提取 Token + OpenKfId
-   * 回调只推送事件通知，不含消息内容
-   */
   parseKfCallback(xmlData: Record<string, string>): KfCallbackEvent | null {
     const event = xmlData.Event;
     if (event !== 'kf_msg_or_event') {
@@ -113,23 +130,28 @@ export class WechatKfService {
     return { token, openKfId };
   }
 
-  /**
-   * 收到回调后：拉取消息 + 持久化
-   * 1. 从 DB 读取 cursor
-   * 2. 调 sync_msg 拉取消息列表
-   * 3. 逐条写入 ConversationMessage
-   * 4. 更新 cursor
-   * 5. has_more 时继续拉取
-   */
-  async handleCallbackAndSync(callbackToken: string, openKfId: string): Promise<void> {
-    try {
-      // 读取上次游标
-      const cursorRow = await this.prisma.kfSyncCursor.findUnique({
-        where: { openKfId },
-      });
-      const cursor = cursorRow?.cursor;
+  // ─── 核心同步流程 ────────────────────────────────────────────
 
-      let currentCursor = cursor;
+  async handleCallbackAndSync(callbackToken: string, openKfId: string): Promise<void> {
+    // 分布式锁：防止同一 openKfId 并发同步
+    let lockValue: string | null = null;
+    const redisAvailable = this.redisService.isAvailable();
+
+    if (redisAvailable) {
+      try {
+        lockValue = await this.redisService.acquireLock(`kf:sync:${openKfId}`, 30_000);
+      } catch {
+        this.logger.warn('获取分布式锁异常，跳过锁');
+      }
+      if (!lockValue) {
+        this.logger.warn(`跳过同步，锁被占用: openKfId=${openKfId}`);
+        return;
+      }
+    }
+
+    try {
+      const cursorRow = await this.prisma.kfSyncCursor.findUnique({ where: { openKfId } });
+      let currentCursor = cursorRow?.cursor;
       let hasMore = true;
 
       while (hasMore) {
@@ -147,156 +169,406 @@ export class WechatKfService {
 
         if (result.msg_list?.length > 0) {
           this.logger.log(`sync_msg 返回 ${result.msg_list.length} 条消息`);
-          await this.persistMessages(result.msg_list);
-          // 对客户消息自动回复
-          await this.autoReply(result.msg_list, openKfId);
+          const newMsgs = await this.batchPersistMessages(
+            result.msg_list,
+            openKfId,
+            result.next_cursor,
+          );
+
+          // 仅对真正新增的客户文本消息入队防抖自动回复
+          const customerMsgs = newMsgs.filter(
+            (m) => m.origin === 3 && m.external_userid && m.msgtype === 'text',
+          );
+          for (const msg of customerMsgs) {
+            const sessionKey = `${openKfId}:${msg.external_userid}`;
+            const content = msg.text?.content || '';
+            await this.enqueueForAutoReply(sessionKey, openKfId, msg.external_userid!, content);
+          }
+        } else if (result.next_cursor) {
+          // 空批次也推进 cursor
+          await this.prisma.kfSyncCursor.upsert({
+            where: { openKfId },
+            create: { openKfId, cursor: result.next_cursor },
+            update: { cursor: result.next_cursor },
+          });
         }
 
         currentCursor = result.next_cursor;
         hasMore = result.has_more === 1;
-
-        // 每轮都更新 cursor，避免丢失
-        if (currentCursor) {
-          await this.prisma.kfSyncCursor.upsert({
-            where: { openKfId },
-            create: { openKfId, cursor: currentCursor },
-            update: { cursor: currentCursor },
-          });
-        }
       }
 
       this.logger.log(`KF 消息同步完成: openKfId=${openKfId}`);
     } catch (error: any) {
       this.logger.error(`KF 消息同步异常: openKfId=${openKfId}`, error);
+    } finally {
+      if (lockValue) {
+        try {
+          await this.redisService.releaseLock(`kf:sync:${openKfId}`, lockValue);
+        } catch {
+          // 锁有 TTL 兜底，释放失败不阻塞
+        }
+      }
     }
   }
 
+  // ─── 批量持久化（事务）─────────────────────────────────────
+
   /**
-   * 批量持久化消息到数据库
-   * 对每条消息：确保 Contact + Session 存在，然后写入 Message
+   * 在单个事务内：批量 upsert Contact/Session + createMany Message + 更新 cursor
+   * 返回真正新插入的 KfSyncMsg[]
    */
-  private async persistMessages(msgList: KfSyncMsg[]): Promise<void> {
-    for (const msg of msgList) {
-      try {
-        // 事件消息可能没有 external_userid
+  private async batchPersistMessages(
+    msgList: KfSyncMsg[],
+    openKfId: string,
+    nextCursor: string,
+  ): Promise<KfSyncMsg[]> {
+    return this.prisma.$transaction(async (tx) => {
+      // 1. 预映射：收集唯一实体和消息行
+      const uniqueUserIds = new Set<string>();
+      const sessionKeyToUserMap = new Map<string, string>(); // sessionKey -> externalUserId
+      const sessionKeyMaxTime = new Map<string, number>(); // sessionKey -> max send_time
+      const preMapped: PreMappedMessage[] = [];
+
+      for (const msg of msgList) {
         const externalUserId = msg.external_userid;
-        const openKfId = msg.open_kfid || '';
+        const msgOpenKfId = msg.open_kfid || openKfId;
 
-        // 确保 Contact 存在（仅非事件消息）
-        let contactId: string | undefined;
-        if (externalUserId) {
-          const contact = await this.prisma.contact.upsert({
-            where: { openId: externalUserId },
-            create: { openId: externalUserId },
-            update: { lastActiveAt: new Date() },
-          });
-          contactId = contact.id;
-        }
+        if (!externalUserId) continue;
 
-        // 确保 ConversationSession 存在
-        let sessionId: string | undefined;
-        if (contactId && openKfId) {
-          const sessionKey = `${openKfId}:${externalUserId}`;
-          const session = await this.prisma.conversationSession.upsert({
-            where: { sessionKey },
-            create: {
-              contactId,
-              openKfId,
-              sessionKey,
-              lastActiveAt: new Date(msg.send_time * 1000),
-            },
-            update: {
-              lastActiveAt: new Date(msg.send_time * 1000),
-              turnCount: { increment: 1 },
-            },
-          });
-          sessionId = session.id;
-        }
+        const sessionKey = `${msgOpenKfId}:${externalUserId}`;
+        uniqueUserIds.add(externalUserId);
+        sessionKeyToUserMap.set(sessionKey, externalUserId);
 
-        // 跳过没有 session 的消息（无法关联）
-        if (!sessionId) {
-          this.logger.warn(`消息缺少 session 信息，跳过: msgid=${msg.msgid}`);
-          continue;
-        }
+        const prevMax = sessionKeyMaxTime.get(sessionKey) || 0;
+        if (msg.send_time > prevMax) sessionKeyMaxTime.set(sessionKey, msg.send_time);
 
-        // 去重：kfMsgId 唯一
-        const existing = await this.prisma.conversationMessage.findUnique({
-          where: { kfMsgId: msg.msgid },
+        preMapped.push({
+          kfMsgId: msg.msgid,
+          sessionKey,
+          externalUserId,
+          role: msg.origin === 5 ? 'assistant' : 'user',
+          origin: ORIGIN_MAP[msg.origin] || 'CUSTOMER',
+          type: MSGTYPE_MAP[msg.msgtype] || 'TEXT',
+          content: this.extractContent(msg),
+          sendTime: new Date(msg.send_time * 1000),
+          servicerUserId: msg.servicer_userid,
         });
-        if (existing) continue;
+      }
 
-        // 映射字段
-        const role = msg.origin === 5 ? 'assistant' : 'user';
-        const origin = ORIGIN_MAP[msg.origin] || 'CUSTOMER';
-        const type = MSGTYPE_MAP[msg.msgtype] || 'TEXT';
-        const content = this.extractContent(msg);
-        const sendTime = new Date(msg.send_time * 1000);
+      if (preMapped.length === 0) {
+        // 仅有事件消息，只更新 cursor
+        if (nextCursor) {
+          await tx.kfSyncCursor.upsert({
+            where: { openKfId },
+            create: { openKfId, cursor: nextCursor },
+            update: { cursor: nextCursor },
+          });
+        }
+        return [];
+      }
 
-        await this.prisma.conversationMessage.create({
-          data: {
-            sessionId,
-            role: role as 'user' | 'assistant',
-            type: type as any,
-            origin: origin as any,
-            content,
-            kfMsgId: msg.msgid,
+      // 2. 批量 upsert Contacts
+      const contactMap = new Map<string, string>(); // openId -> contact.id
+      for (const uid of uniqueUserIds) {
+        const c = await tx.contact.upsert({
+          where: { openId: uid },
+          create: { openId: uid },
+          update: { lastActiveAt: new Date() },
+        });
+        contactMap.set(uid, c.id);
+      }
+
+      // 3. 批量 upsert Sessions（不 increment turnCount）
+      const sessionMap = new Map<string, string>(); // sessionKey -> session.id
+      for (const [sessionKey, uid] of sessionKeyToUserMap) {
+        const contactId = contactMap.get(uid);
+        if (!contactId) continue;
+        const maxTime = sessionKeyMaxTime.get(sessionKey) || Date.now() / 1000;
+        const s = await tx.conversationSession.upsert({
+          where: { sessionKey },
+          create: {
+            contactId,
             openKfId,
-            externalUserId,
-            servicerUserId: msg.servicer_userid,
-            sendTime,
+            sessionKey,
+            lastActiveAt: new Date(maxTime * 1000),
+          },
+          update: {
+            lastActiveAt: new Date(maxTime * 1000),
           },
         });
-      } catch (error: any) {
-        this.logger.error(`消息持久化失败: msgid=${msg.msgid}`, error);
+        sessionMap.set(sessionKey, s.id);
       }
-    }
-  }
 
-  /**
-   * 自动回复：客户消息到达后发送默认欢迎语
-   * 会话状态 0（未处理）时需先转为 1（智能助手）才能发消息
-   */
-  private async autoReply(msgList: KfSyncMsg[], openKfId: string): Promise<void> {
-    const customerMsgs = msgList.filter(
-      (m) => m.origin === 3 && m.external_userid && m.msgtype === 'text',
-    );
-    this.logger.log(`autoReply: ${msgList.length} 条消息, ${customerMsgs.length} 条客户文本消息`);
-    for (const msg of customerMsgs) {
-      try {
-        // 检查会话状态：0=未处理→转智能助手, 3=人工接待中→跳过自动回复
-        const stateRes = await this.kfApiService.getKfServiceState(openKfId, msg.external_userid);
-        this.logger.log(`会话状态: ${JSON.stringify(stateRes)}`);
-        if (stateRes.service_state === 3) {
-          this.logger.log(`会话已人工接待，跳过自动回复: externalUserId=${msg.external_userid}`);
-          continue;
-        }
-        if (stateRes.service_state === 0) {
-          const transRes = await this.kfApiService.transKfServiceState(
+      // 4. createMany Messages + skipDuplicates（利用 kfMsgId 唯一索引）
+      const messageRows = preMapped
+        .map((m) => {
+          const sessionId = sessionMap.get(m.sessionKey);
+          if (!sessionId) return null;
+          return {
+            sessionId,
+            role: m.role,
+            type: m.type as any,
+            origin: m.origin as any,
+            content: m.content,
+            kfMsgId: m.kfMsgId,
             openKfId,
-            msg.external_userid,
-            1,
-          );
-          this.logger.log(
-            `会话已转为智能助手: externalUserId=${msg.external_userid}, transRes=${JSON.stringify(transRes)}`,
-          );
-        }
+            externalUserId: m.externalUserId,
+            servicerUserId: m.servicerUserId,
+            sendTime: m.sendTime,
+          };
+        })
+        .filter(Boolean) as any[];
 
-        const replyText = this.configService.get<string>(
-          'WX_WORK_KF_AUTO_REPLY',
-          '您好，感谢您的咨询！我们正在为您安排专属顾问，请稍候～',
-        );
-        await this.kfApiService.sendText(openKfId, msg.external_userid, replyText);
-        this.logger.log(`自动回复已发送: to=${msg.external_userid}`);
-      } catch (error: any) {
-        this.logger.error(`自动回复失败: to=${msg.external_userid}`, error);
+      if (messageRows.length > 0) {
+        await tx.conversationMessage.createMany({
+          data: messageRows,
+          skipDuplicates: true,
+        });
       }
+
+      // 5. 查回实际插入的消息，按 session 计数更新 turnCount
+      const insertedMsgs = await tx.conversationMessage.findMany({
+        where: { kfMsgId: { in: messageRows.map((m: any) => m.kfMsgId) } },
+        select: { kfMsgId: true, sessionId: true },
+      });
+
+      const newCountPerSession = new Map<string, number>();
+      for (const msg of insertedMsgs) {
+        newCountPerSession.set(msg.sessionId, (newCountPerSession.get(msg.sessionId) || 0) + 1);
+      }
+      for (const [sessionId, count] of newCountPerSession) {
+        await tx.conversationSession.update({
+          where: { id: sessionId },
+          data: { turnCount: { increment: count } },
+        });
+      }
+
+      // 6. 更新 cursor
+      if (nextCursor) {
+        await tx.kfSyncCursor.upsert({
+          where: { openKfId },
+          create: { openKfId, cursor: nextCursor },
+          update: { cursor: nextCursor },
+        });
+      }
+
+      // 7. 返回真正新插入的原始消息
+      const insertedIds = new Set(insertedMsgs.map((m) => m.kfMsgId));
+      const newSyncMsgs = msgList.filter((m) => insertedIds.has(m.msgid));
+      this.logger.log(`批量持久化完成: ${msgList.length} 条中 ${newSyncMsgs.length} 条为新消息`);
+      return newSyncMsgs;
+    });
+  }
+
+  // ─── Redis 防抖自动回复 ────────────────────────────────────
+
+  private async enqueueForAutoReply(
+    sessionKey: string,
+    openKfId: string,
+    externalUserId: string,
+    content: string,
+  ): Promise<void> {
+    const redisClient = this.redisService.getClient();
+    if (!redisClient) {
+      // Redis 不可用时降级为立即回复
+      this.logger.warn('Redis 不可用，立即发送自动回复');
+      await this.executeAutoReply(openKfId, externalUserId);
+      return;
+    }
+
+    try {
+      await redisClient.rpush(`kf:debounce:${sessionKey}`, content);
+    } catch {
+      this.logger.warn('Redis RPUSH 失败，降级为立即回复');
+      await this.executeAutoReply(openKfId, externalUserId);
+      return;
+    }
+
+    this.scheduleDebouncedAutoReply(sessionKey, openKfId, externalUserId);
+  }
+
+  private scheduleDebouncedAutoReply(
+    sessionKey: string,
+    openKfId: string,
+    externalUserId: string,
+  ): void {
+    const debounceMs = Number(this.configService.get('KF_DEBOUNCE_MS', '3000'));
+
+    // 重置已有 timer
+    const existing = this.debounceTimers.get(sessionKey);
+    if (existing) clearTimeout(existing);
+
+    const timer = setTimeout(() => {
+      this.debounceTimers.delete(sessionKey);
+      this.flushAutoReply(sessionKey, openKfId, externalUserId).catch((err) =>
+        this.logger.error(`防抖自动回复失败: sessionKey=${sessionKey}`, err),
+      );
+    }, debounceMs);
+
+    this.debounceTimers.set(sessionKey, timer);
+  }
+
+  private async flushAutoReply(
+    sessionKey: string,
+    openKfId: string,
+    externalUserId: string,
+  ): Promise<void> {
+    const redisClient = this.redisService.getClient();
+    if (!redisClient) {
+      this.logger.warn('Redis 不可用，跳过防抖刷新');
+      return;
+    }
+
+    try {
+      const results = await redisClient
+        .multi()
+        .lrange(`kf:debounce:${sessionKey}`, 0, -1)
+        .del(`kf:debounce:${sessionKey}`)
+        .exec();
+
+      const contents: string[] = results?.[0]?.[1] || [];
+      if (contents.length === 0) return;
+
+      this.logger.log(`防抖刷新: sessionKey=${sessionKey}, ${contents.length} 条消息已合并`);
+      await this.executeAutoReply(openKfId, externalUserId);
+    } catch (error: any) {
+      this.logger.error(`flushAutoReply 失败: sessionKey=${sessionKey}`, error);
     }
   }
 
-  /**
-   * 从 sync_msg 消息中提取内容文本
-   * 复杂消息类型序列化为 JSON
-   */
+  private async executeAutoReply(openKfId: string, externalUserId: string): Promise<void> {
+    const sessionKey = `${openKfId}:${externalUserId}`;
+    try {
+      // 1. 检查企微服务状态
+      const stateRes = await this.kfApiService.getKfServiceState(openKfId, externalUserId);
+      const serviceState = stateRes.service_state;
+
+      if (serviceState === 3) {
+        this.logger.log(`会话已人工接待，跳过自动回复: externalUserId=${externalUserId}`);
+        return;
+      }
+
+      if (serviceState === 0) {
+        await this.kfApiService.transKfServiceState(openKfId, externalUserId, 1);
+        this.logger.log(`会话已转为智能助手: externalUserId=${externalUserId}`);
+      }
+
+      // 2. 加载会话上下文
+      const session = await this.prisma.conversationSession.findUnique({
+        where: { sessionKey },
+      });
+      if (!session) {
+        this.logger.warn(`自动回复跳过: 未找到会话 sessionKey=${sessionKey}`);
+        return;
+      }
+
+      const maxHistory = Number(this.configService.get('LLM_MAX_HISTORY_MESSAGES', '20'));
+      const recentMessages = await this.prisma.conversationMessage.findMany({
+        where: {
+          sessionId: session.id,
+          role: { in: ['user', 'assistant'] },
+          type: 'TEXT',
+        },
+        orderBy: { sendTime: 'asc' },
+        take: maxHistory,
+        select: { role: true, content: true },
+      });
+
+      // 3. 调用 LLM
+      let response: import('./sales-llm.service').SalesLlmResponse;
+      try {
+        response = await this.salesLlmService.generateReply({
+          sessionState: session.state as string,
+          intentLevel: session.intentLevel as string,
+          turnCount: session.turnCount,
+          messages: recentMessages as { role: 'user' | 'assistant'; content: string }[],
+        });
+      } catch (err: any) {
+        this.logger.error(`LLM 调用失败，使用降级回复: ${err.message}`);
+        response = this.salesLlmService.getFallbackResponse();
+      }
+
+      // 4. 校验状态转换
+      const validatedState = this.salesLlmService.validateTransition(
+        session.state as string,
+        response.newState,
+      );
+
+      // 5. 发送回复
+      if (response.escalateToHuman) {
+        await this.kfApiService.transKfServiceState(openKfId, externalUserId, 3);
+        await this.kfApiService.sendText(openKfId, externalUserId, response.reply);
+        this.logger.log(`已转人工: externalUserId=${externalUserId}`);
+      } else {
+        await this.kfApiService.sendText(openKfId, externalUserId, response.reply);
+        this.logger.log(
+          `AI 回复已发送: to=${externalUserId}, state=${validatedState}, confidence=${response.confidence}`,
+        );
+      }
+
+      // 6. 发送支付链接
+      if (response.sendPaymentLink) {
+        try {
+          await this.kfApiService.sendLink(openKfId, externalUserId, {
+            title: '立即购买',
+            desc: '点击完成支付，享受专属优惠',
+            url: `https://wesale.example.com/pay?session=${session.id}`,
+          });
+          this.logger.log(`支付链接已发送: to=${externalUserId}`);
+        } catch (err: any) {
+          this.logger.error(`支付链接发送失败: ${err.message}`);
+        }
+      }
+
+      // 7. 持久化 AI 回复（写入所有 AI 字段）
+      await this.prisma.conversationMessage.create({
+        data: {
+          sessionId: session.id,
+          role: 'assistant',
+          type: response.sendPaymentLink ? 'LINK_CARD' : 'TEXT',
+          origin: 'SERVICER',
+          content: response.reply,
+          openKfId,
+          externalUserId,
+          sendTime: new Date(),
+          aiIntentLevel: response.intentLevel as any,
+          aiConfidence: response.confidence,
+          sendPaymentCard: response.sendPaymentLink,
+          recommendedProductId: response.recommendedProductId || null,
+          escalationReason: response.escalationReason || null,
+        },
+      });
+
+      // 8. 更新会话状态
+      await this.prisma.conversationSession.update({
+        where: { id: session.id },
+        data: {
+          state: validatedState as any,
+          intentLevel: response.intentLevel as any,
+          turnCount: { increment: 1 },
+          lastActiveAt: new Date(),
+        },
+      });
+
+      // 9. 更新联系人状态
+      if (response.escalateToHuman) {
+        await this.prisma.contact.update({
+          where: { id: session.contactId },
+          data: { status: 'ESCALATED' },
+        });
+      } else if (validatedState === 'CONVERTED') {
+        await this.prisma.contact.update({
+          where: { id: session.contactId },
+          data: { status: 'CONVERTED', convertedAt: new Date() },
+        });
+      }
+    } catch (error: any) {
+      this.logger.error(`自动回复执行失败: to=${externalUserId}`, error);
+    }
+  }
+
+  // ─── 工具方法 ───────────────────────────────────────────────
+
   private extractContent(msg: KfSyncMsg): string {
     const type = msg.msgtype;
     const body = msg[type];
@@ -332,10 +604,6 @@ export class WechatKfService {
     }
   }
 
-  /**
-   * 生成 JSSDK 签名
-   * 用于前端页面调用微信 JS-SDK
-   */
   async generateJssdkSignature(url: string): Promise<{
     appId: string;
     timestamp: number;
@@ -347,7 +615,6 @@ export class WechatKfService {
 
     const accessToken = await this.kfApiService.getAccessToken();
 
-    // 获取 jsapi_ticket
     const ticketUrl = `https://qyapi.weixin.qq.com/cgi-bin/get_jsapi_ticket?access_token=${accessToken}`;
     const ticketRes = await fetch(ticketUrl);
     const ticketData = await ticketRes.json();
