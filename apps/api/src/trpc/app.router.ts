@@ -11,6 +11,7 @@ import { paymentRouter } from '../modules/payment/trpc/payment.router';
 import { agentsRouter } from '../modules/agents/trpc/agents.router';
 import { wecomRouter } from '../modules/wecom/trpc/wecom.router';
 import { wechatKfRouter } from '../modules/wechat-kf/trpc/wechat-kf.router';
+import { landingStatsRouter } from '../modules/landing-track/trpc/landing-stats.router';
 
 export const appRouter = router({
   auth: authRouter,
@@ -23,6 +24,7 @@ export const appRouter = router({
   agents: agentsRouter,
   wecom: wecomRouter,
   wechatKf: wechatKfRouter,
+  landingStats: landingStatsRouter,
 });
 
 export type AppRouter = typeof appRouter;
