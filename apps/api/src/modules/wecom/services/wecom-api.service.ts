@@ -135,6 +135,32 @@ export class WecomApiService {
     return this.post(`${WECOM_API_BASE}/kf/sync_msg?access_token=${accessToken}`, params);
   }
 
+  /**
+   * 上传临时素材（图片），返回 media_id（3 天有效）
+   * POST /cgi-bin/media/upload?access_token=TOKEN&type=image
+   */
+  async uploadTempImage(
+    accessToken: string,
+    buffer: Buffer,
+    filename = 'image.png',
+  ): Promise<{ media_id: string; created_at?: string; type?: string }> {
+    const form = new FormData();
+    form.append('media', new Blob([new Uint8Array(buffer)], { type: 'image/png' }), filename);
+
+    const response = await fetch(
+      `${WECOM_API_BASE}/media/upload?access_token=${accessToken}&type=image`,
+      { method: 'POST', body: form },
+    );
+    const data = await response.json();
+
+    if (data.errcode && data.errcode !== 0) {
+      this.logger.error(`上传临时素材失败: ${data.errmsg} (errcode: ${data.errcode})`);
+      throw new Error(`企业微信 API 错误: ${data.errmsg} (errcode: ${data.errcode})`);
+    }
+
+    return data;
+  }
+
   private async post(url: string, body: Record<string, any>): Promise<any> {
     const response = await fetch(url, {
       method: 'POST',
