@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { agentsApi, type Agent } from '@/api/agents';
+import type { Agent } from '@/api/agents'
+import { onMounted, ref } from 'vue'
+import { agentsApi } from '@/api/agents'
 
 definePage({
   type: 'page',
@@ -8,27 +9,29 @@ definePage({
     navigationBarTitleText: 'AI 助手',
     backgroundColor: '#F5FAFF',
   },
-});
+})
 
-const agents = ref<Agent[]>([]);
-const loading = ref(true);
+const agents = ref<Agent[]>([])
+const loading = ref(true)
 
 onMounted(async () => {
   try {
-    const res = await agentsApi.getActiveAgents();
-    agents.value = res.data || [];
-  } catch (error) {
-    console.error('Failed to load agents:', error);
-  } finally {
-    loading.value = false;
+    const res = await agentsApi.getActiveAgents()
+    agents.value = res.data || []
   }
-});
+  catch (error) {
+    console.error('Failed to load agents:', error)
+  }
+  finally {
+    loading.value = false
+  }
+})
 
-const openChat = (agent: Agent) => {
+function openChat(agent: Agent) {
   uni.navigateTo({
     url: `/pages/agents/chat?id=${agent.id}&name=${encodeURIComponent(agent.name)}`,
-  });
-};
+  })
+}
 </script>
 
 <template>
@@ -43,12 +46,20 @@ const openChat = (agent: Agent) => {
 
     <view v-else class="agent-list">
       <view v-for="agent in agents" :key="agent.id" class="agent-card" @tap="openChat(agent)">
-        <view class="agent-icon">🤖</view>
-        <view class="agent-info">
-          <text class="agent-name">{{ agent.name }}</text>
-          <text v-if="agent.description" class="agent-desc">{{ agent.description }}</text>
+        <view class="agent-icon">
+          🤖
         </view>
-        <view class="agent-arrow">›</view>
+        <view class="agent-info">
+          <text class="agent-name">
+            {{ agent.name }}
+          </text>
+          <text v-if="agent.description" class="agent-desc">
+            {{ agent.description }}
+          </text>
+        </view>
+        <view class="agent-arrow">
+          ›
+        </view>
       </view>
     </view>
   </view>

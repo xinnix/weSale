@@ -63,3 +63,10 @@ uploads/
 .claude/logs/
 .claude/backups/
 1panel.env
+
+# Playwright MCP debug artifacts
+.playwright-mcp/
+
+# Screenshots
+landing-refactor.png
+landing-stats-admin.png

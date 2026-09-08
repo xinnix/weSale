@@ -4,18 +4,18 @@
  */
 
 export interface ApiConfig {
-  baseURL: string;
-  timeout: number;
+  baseURL: string
+  timeout: number
 }
 
 // 从环境变量获取 API 地址
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
 // 配置
 export const API_CONFIG: ApiConfig = {
   baseURL: API_BASE_URL,
   timeout: 10000,
-};
+}
 
 // API 端点 - genModule 生成的模块会自动追加到此对象
 export const API_ENDPOINTS = {
@@ -36,6 +36,6 @@ export const API_ENDPOINTS = {
   agentChat: (id: string) => `/agents/${id}/user-chat`,
   agentConversations: (id: string) => `/agents/${id}/conversations`,
   agentMessages: (id: string, conversationId: string) => `/agents/${id}/messages/${conversationId}`,
-} as const;
+} as const
 
-export default API_CONFIG;
+export default API_CONFIG

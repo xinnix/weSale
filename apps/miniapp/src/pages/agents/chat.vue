@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue';
-import { onLoad } from '@dcloudio/uni-app';
+import { onLoad } from '@dcloudio/uni-app'
+import { nextTick, ref } from 'vue'
 
 definePage({
   type: 'page',
@@ -8,117 +8,124 @@ definePage({
     navigationBarTitleText: 'AI 对话',
     backgroundColor: '#F5FAFF',
   },
-});
+})
 
-const agentId = ref('');
-const agentName = ref('');
-const query = ref('');
-const messages = ref<any[]>([]);
-const isStreaming = ref(false);
-const scrollIntoView = ref('');
+const agentId = ref('')
+const agentName = ref('')
+const query = ref('')
+const messages = ref<any[]>([])
+const isStreaming = ref(false)
+const scrollIntoView = ref('')
 
 interface ChatMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  thought?: string;
-  tool?: string;
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  thought?: string
+  tool?: string
 }
 
 onLoad((options) => {
-  agentId.value = options?.id || '';
-  agentName.value = decodeURIComponent(options?.name || 'AI 助手');
-  uni.setNavigationBarTitle({ title: agentName.value });
-});
+  agentId.value = options?.id || ''
+  agentName.value = decodeURIComponent(options?.name || 'AI 助手')
+  uni.setNavigationBarTitle({ title: agentName.value })
+})
 
-const getAuthHeaders = () => {
-  const token = uni.getStorageSync('token');
+function getAuthHeaders() {
+  const token = uni.getStorageSync('token')
   return {
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-  };
-};
+    'Authorization': `Bearer ${token}`,
+  }
+}
 
-const handleSend = async () => {
-  if (!query.value.trim() || !agentId.value || isStreaming.value) return;
+async function handleSend() {
+  if (!query.value.trim() || !agentId.value || isStreaming.value)
+    return
 
   const userMsg: ChatMessage = {
     id: `user-${Date.now()}`,
     role: 'user',
     content: query.value.trim(),
-  };
+  }
 
   const assistantMsg: ChatMessage = {
     id: `assistant-${Date.now()}`,
     role: 'assistant',
     content: '',
-  };
+  }
 
-  messages.value.push(userMsg, assistantMsg);
-  const currentQuery = query.value.trim();
-  query.value = '';
-  isStreaming.value = true;
+  messages.value.push(userMsg, assistantMsg)
+  const currentQuery = query.value.trim()
+  query.value = ''
+  isStreaming.value = true
 
-  await nextTick();
-  scrollIntoView.value = assistantMsg.id;
+  await nextTick()
+  scrollIntoView.value = assistantMsg.id
 
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
     const response = await fetch(`${baseUrl}/agents/${agentId.value}/user-chat`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ query: currentQuery }),
-    });
+    })
 
     if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status}`);
+      throw new Error(`HTTP error: ${response.status}`)
     }
 
-    const reader = response.body!.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
+    const reader = response.body!.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
 
     while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+      const { done, value } = await reader.read()
+      if (done)
+        break
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
 
       for (const line of lines) {
         if (line.startsWith('data: ')) {
-          const jsonStr = line.slice(6).trim();
-          if (!jsonStr) continue;
+          const jsonStr = line.slice(6).trim()
+          if (!jsonStr)
+            continue
           try {
-            const event = JSON.parse(jsonStr);
+            const event = JSON.parse(jsonStr)
 
-            const lastIdx = messages.value.length - 1;
-            if (lastIdx < 0) continue;
+            const lastIdx = messages.value.length - 1
+            if (lastIdx < 0)
+              continue
 
             switch (event.event) {
               case 'agent_message':
               case 'message':
-                messages.value[lastIdx].content += event.answer || '';
-                break;
+                messages.value[lastIdx].content += event.answer || ''
+                break
               case 'agent_thought':
-                messages.value[lastIdx].thought = event.thought;
-                messages.value[lastIdx].tool = event.tool;
-                break;
+                messages.value[lastIdx].thought = event.thought
+                messages.value[lastIdx].tool = event.tool
+                break
               case 'error':
-                uni.showToast({ title: event.message || '对话出错', icon: 'none' });
-                break;
+                uni.showToast({ title: event.message || '对话出错', icon: 'none' })
+                break
             }
-          } catch {}
+          }
+          catch {}
         }
       }
     }
-  } catch (error: any) {
-    uni.showToast({ title: '对话失败', icon: 'none' });
-  } finally {
-    isStreaming.value = false;
   }
-};
+  catch {
+    uni.showToast({ title: '对话失败', icon: 'none' })
+  }
+  finally {
+    isStreaming.value = false
+  }
+}
 </script>
 
 <template>
@@ -126,11 +133,15 @@ const handleSend = async () => {
     <!-- Messages -->
     <scroll-view class="messages" scroll-y :scroll-into-view="scrollIntoView" scroll-with-animation>
       <view v-if="messages.length === 0" class="empty">
-        <text class="empty-icon">🤖</text>
-        <text class="empty-text">发送消息开始对话</text>
+        <text class="empty-icon">
+          🤖
+        </text>
+        <text class="empty-text">
+          发送消息开始对话
+        </text>
       </view>
 
-      <view v-for="msg in messages" :key="msg.id" :id="msg.id" class="message-row">
+      <view v-for="msg in messages" :id="msg.id" :key="msg.id" class="message-row">
         <!-- User message -->
         <view v-if="msg.role === 'user'" class="msg msg-user">
           <view class="msg-bubble msg-bubble-user">
@@ -140,10 +151,14 @@ const handleSend = async () => {
 
         <!-- Assistant message -->
         <view v-else class="msg msg-assistant">
-          <view class="msg-avatar">🤖</view>
+          <view class="msg-avatar">
+            🤖
+          </view>
           <view class="msg-content">
             <view v-if="msg.thought" class="msg-thought">
-              <text v-if="msg.tool" class="thought-tool">🔧 {{ msg.tool }}</text>
+              <text v-if="msg.tool" class="thought-tool">
+                🔧 {{ msg.tool }}
+              </text>
               <text>{{ msg.thought }}</text>
             </view>
             <view class="msg-bubble msg-bubble-assistant">
@@ -165,7 +180,7 @@ const handleSend = async () => {
         :disabled="isStreaming"
         confirm-type="send"
         @confirm="handleSend"
-      />
+      >
       <button class="send-btn" :disabled="!query.trim() || isStreaming" @tap="handleSend">
         {{ isStreaming ? '...' : '发送' }}
       </button>

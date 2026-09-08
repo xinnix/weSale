@@ -10,4 +10,4 @@ Component({
       value: 32,
     },
   },
-});
+})

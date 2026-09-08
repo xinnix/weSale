@@ -19,7 +19,7 @@ export const KfAccountListPage = () => {
           {},
         );
         setAccounts(result?.kf_list || []);
-      } catch (e: any) {
+      } catch {
         message.error('加载客服账号失败');
       } finally {
         setLoading(false);

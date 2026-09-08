@@ -3,17 +3,17 @@
  * 使用 Vue 3 reactive 实现状态管理，支持最小显示时间
  */
 
-import { reactive } from 'vue';
+import { reactive } from 'vue'
 
 interface LoadingState {
   /** 当前活跃的请求数量 */
-  count: number;
+  count: number
   /** loading 是否显示 */
-  isVisible: boolean;
+  isVisible: boolean
   /** loading 文案 */
-  text: string;
+  text: string
   /** 最小显示时间计时器 */
-  minTimer: NodeJS.Timeout | null;
+  minTimer: NodeJS.Timeout | null
 }
 
 const state = reactive<LoadingState>({
@@ -21,27 +21,27 @@ const state = reactive<LoadingState>({
   isVisible: false,
   text: '加载中...',
   minTimer: null,
-});
+})
 
 /** 最小显示时间（毫秒） */
-const MIN_DISPLAY_TIME = 500;
+const MIN_DISPLAY_TIME = 500
 
 /**
  * 显示 loading
  * @param text loading 文案
  */
 export function showLoading(text = '加载中...') {
-  state.count++;
-  state.text = text;
+  state.count++
+  state.text = text
 
   // 清除之前的计时器
   if (state.minTimer) {
-    clearTimeout(state.minTimer);
-    state.minTimer = null;
+    clearTimeout(state.minTimer)
+    state.minTimer = null
   }
 
   // 立即显示
-  state.isVisible = true;
+  state.isVisible = true
 }
 
 /**
@@ -49,22 +49,19 @@ export function showLoading(text = '加载中...') {
  * 带有最小显示时间保护
  */
 export function hideLoading() {
-  state.count--;
+  state.count--
 
   if (state.count <= 0) {
-    state.count = 0;
-
-    // 如果已经显示了很短时间，延迟隐藏
-    const startTime = Date.now();
+    state.count = 0
 
     if (state.minTimer) {
-      clearTimeout(state.minTimer);
+      clearTimeout(state.minTimer)
     }
 
     state.minTimer = setTimeout(() => {
-      state.isVisible = false;
-      state.minTimer = null;
-    }, MIN_DISPLAY_TIME);
+      state.isVisible = false
+      state.minTimer = null
+    }, MIN_DISPLAY_TIME)
   }
 }
 
@@ -76,5 +73,5 @@ export function useLoading() {
     state,
     showLoading,
     hideLoading,
-  };
+  }
 }

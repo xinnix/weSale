@@ -1,10 +1,10 @@
 <script setup lang="ts">
-const name = ref('');
+const name = ref('')
 function go() {
   if (name.value) {
     uni.navigateTo({
       url: `/pages/hi?name=${name.value}`,
-    });
+    })
   }
 }
 </script>
@@ -29,7 +29,7 @@ function go() {
         autocomplete="off"
         mr-0
         w-full
-      />
+      >
     </view>
     <view>
       <button

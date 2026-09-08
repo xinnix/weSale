@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed } from 'vue'
 
 interface TabItem {
-  pagePath: string;
-  text: string;
-  icon: string;
+  pagePath: string
+  text: string
+  icon: string
 }
 
 const props = defineProps<{
-  current: number;
-}>();
+  current: number
+}>()
 
 const tabs: TabItem[] = [
   {
@@ -32,24 +32,24 @@ const tabs: TabItem[] = [
     text: '我的',
     icon: 'icon-qianbao',
   },
-];
+]
 
 const tabBarList = computed(() => {
   return tabs.map((item, index) => ({
     ...item,
     active: props.current === index,
-  }));
-});
+  }))
+})
 
 function toLink(path: string) {
-  if (props.current === tabs.findIndex((t) => t.pagePath === path)) {
-    return;
+  if (props.current === tabs.findIndex(t => t.pagePath === path)) {
+    return
   }
 
   // 使用 reLaunch 切换页面
   uni.redirectTo({
     url: path,
-  });
+  })
 }
 </script>
 

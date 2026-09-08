@@ -1,5 +1,5 @@
-import { presetUni } from '@uni-helper/unocss-preset-uni';
-import { defineConfig, transformerDirectives, transformerVariantGroup } from 'unocss';
+import { presetUni } from '@uni-helper/unocss-preset-uni'
+import { defineConfig, transformerDirectives, transformerVariantGroup } from 'unocss'
 
 /**
  * UnoCSS 配置 - 小程序版本
@@ -29,16 +29,16 @@ export default defineConfig({
   ],
   theme: {
     colors: {
-      surface: '#f5faff',
+      'surface': '#f5faff',
       'secondary-container': '#b9e2ff',
       'on-primary-fixed-variant': '#004c6b',
       'surface-container-low': '#eff4fa',
       'on-primary': '#ffffff',
-      tertiary: '#8d4f00',
+      'tertiary': '#8d4f00',
       'on-primary-fixed': '#001e2d',
       'inverse-on-surface': '#ecf1f7',
       'secondary-fixed': '#c6e7ff',
-      outline: '#6e7881',
+      'outline': '#6e7881',
       'on-secondary-container': '#3d657e',
       'on-primary-container': '#003e58',
       'on-secondary': '#ffffff',
@@ -63,13 +63,13 @@ export default defineConfig({
       'tertiary-fixed': '#ffdcc0',
       'inverse-surface': '#2c3135',
       'surface-bright': '#f5faff',
-      background: '#f5faff',
+      'background': '#f5faff',
       'on-error': '#ffffff',
       'surface-container': '#eaeef4',
       'primary-fixed': '#c6e7ff',
-      error: '#ba1a1a',
-      secondary: '#3a637c',
-      primary: '#00658d',
+      'error': '#ba1a1a',
+      'secondary': '#3a637c',
+      'primary': '#00658d',
       'on-background': '#171c20',
       'surface-container-highest': '#dee3e8',
       'outline-variant': '#bdc8d1',
@@ -99,11 +99,11 @@ export default defineConfig({
     [
       'line-clamp-2',
       {
-        display: '-webkit-box',
+        'display': '-webkit-box',
         '-webkit-box-orient': 'vertical',
         '-webkit-line-clamp': '2',
-        overflow: 'hidden',
+        'overflow': 'hidden',
       },
     ],
   ],
-});
+})

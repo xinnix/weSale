@@ -1,4 +1,4 @@
-import { defineConfig } from '@uni-helper/unh';
+import { defineConfig } from '@uni-helper/unh'
 
 /**
  * unh 配置文件
@@ -10,7 +10,7 @@ export default defineConfig({
     default: 'h5',
     // 平台别名
     alias: {
-      h5: ['w', 'h'],
+      'h5': ['w', 'h'],
       'mp-weixin': 'wx',
     },
   },
@@ -18,4 +18,4 @@ export default defineConfig({
     pages: true,
     manifest: true,
   },
-});
+})

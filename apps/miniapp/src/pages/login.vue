@@ -1,60 +1,63 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { onLoad } from '@dcloudio/uni-app';
-import { authApi } from '@/api/auth';
+import { onLoad } from '@dcloudio/uni-app'
+import { onMounted, ref } from 'vue'
+import { authApi } from '@/api/auth'
 
 definePage({
   style: {
     navigationStyle: 'custom',
     backgroundColor: '#F5FAFF',
   },
-});
+})
 
-const statusBarHeight = ref(0);
-const loading = ref(false);
-const agreed = ref(false);
+const statusBarHeight = ref(0)
+const loading = ref(false)
+const agreed = ref(false)
 // 第一步完成后进入第二步
-const step = ref(1);
+const step = ref(1)
 // 登录后要跳转的目标页面
-const redirectUrl = ref('');
+const redirectUrl = ref('')
 
 onLoad((options: any) => {
   // 接收跳转参数
   if (options && options.redirect) {
-    redirectUrl.value = decodeURIComponent(options.redirect);
+    redirectUrl.value = decodeURIComponent(options.redirect)
   }
-});
+})
 
 onMounted(() => {
-  const systemInfo = uni.getSystemInfoSync();
-  statusBarHeight.value = systemInfo.statusBarHeight || 0;
-});
+  const systemInfo = uni.getSystemInfoSync()
+  statusBarHeight.value = systemInfo.statusBarHeight || 0
+})
 
 // 第一步：微信登录（获取 openid，建立用户）
 async function onLoginTap() {
   if (!agreed.value) {
-    uni.showToast({ title: '请先同意用户协议和隐私政策', icon: 'none' });
-    return;
+    uni.showToast({ title: '请先同意用户协议和隐私政策', icon: 'none' })
+    return
   }
 
-  loading.value = true;
+  loading.value = true
   try {
-    const codeRes = await uni.login({ provider: 'weixin' });
-    const code = codeRes.code;
-    if (!code) throw new Error('获取登录凭证失败');
+    const codeRes = await uni.login({ provider: 'weixin' })
+    const code = codeRes.code
+    if (!code)
+      throw new Error('获取登录凭证失败')
 
-    const res = await authApi.wechatLogin(code);
+    const res = await authApi.wechatLogin(code)
 
-    uni.setStorageSync('token', res.data.accessToken);
-    uni.setStorageSync('refreshToken', res.data.refreshToken);
-    uni.setStorageSync('userInfo', res.data.user);
+    uni.setStorageSync('token', res.data.accessToken)
+    uni.setStorageSync('refreshToken', res.data.refreshToken)
+    uni.setStorageSync('userInfo', res.data.user)
 
     // 用户已有手机号则跳过第二步，否则进入第二步获取手机号
-    step.value = 2;
-  } catch (error: any) {
-    uni.showToast({ title: error.message || '登录失败', icon: 'none' });
-  } finally {
-    loading.value = false;
+    step.value = 2
+  }
+  catch (error: any) {
+    uni.showToast({ title: error.message || '登录失败', icon: 'none' })
+  }
+  finally {
+    loading.value = false
   }
 }
 
@@ -62,49 +65,51 @@ async function onLoginTap() {
 async function handleGetPhoneNumber(event: any) {
   if (event.detail.errMsg !== 'getPhoneNumber:ok') {
     // 用户拒绝授权，直接跳转首页
-    navigateAfterLogin();
-    return;
+    navigateAfterLogin()
+    return
   }
 
-  loading.value = true;
+  loading.value = true
   try {
     // 手机号获取 - 留空供业务方实现
-    console.log('手机号授权:', event.detail.code);
-  } catch (error) {
-    console.error('手机号授权失败', error);
-  } finally {
-    loading.value = false;
-    navigateAfterLogin();
+  }
+  catch (error) {
+    console.error('手机号授权失败', error)
+  }
+  finally {
+    loading.value = false
+    navigateAfterLogin()
   }
 }
 
 // 跳过手机号，直接进入
 function skipPhoneNumber() {
-  navigateAfterLogin();
+  navigateAfterLogin()
 }
 
 async function navigateAfterLogin() {
-  uni.showToast({ title: '登录成功', icon: 'success' });
+  uni.showToast({ title: '登录成功', icon: 'success' })
 
   if (redirectUrl.value) {
     setTimeout(() => {
-      uni.navigateBack({ delta: 1 });
-    }, 1000);
-  } else {
+      uni.navigateBack({ delta: 1 })
+    }, 1000)
+  }
+  else {
     setTimeout(() => {
-      uni.reLaunch({ url: '/pages/index' });
-    }, 1000);
+      uni.reLaunch({ url: '/pages/index' })
+    }, 1000)
   }
 }
 
 // 跳转到用户协议页面
 function navigateToUserAgreement() {
-  uni.navigateTo({ url: '/pages/agreement/user-agreement' });
+  uni.navigateTo({ url: '/pages/agreement/user-agreement' })
 }
 
 // 跳转到隐私政策页面
 function navigateToPrivacyPolicy() {
-  uni.navigateTo({ url: '/pages/agreement/privacy-policy' });
+  uni.navigateTo({ url: '/pages/agreement/privacy-policy' })
 }
 </script>
 
@@ -128,26 +133,42 @@ function navigateToPrivacyPolicy() {
       <template v-if="step === 1">
         <view class="login-header">
           <image class="logo-image" src="/static/logo.png" mode="aspectFit" />
-          <text class="title text-on-surface font-extrabold"> 欢迎回来 </text>
-          <text class="subtitle text-on-surface-variant"> 登录开启精彩体验 </text>
+          <text class="title text-on-surface font-extrabold">
+            欢迎回来
+          </text>
+          <text class="subtitle text-on-surface-variant">
+            登录开启精彩体验
+          </text>
         </view>
 
         <view class="wechat-login-btn" :class="{ disabled: loading }" @tap="onLoginTap">
           <view class="btn-content">
             <text class="btn-icon iconfont icon-weixin" />
-            <text class="btn-text"> 微信一键登录 </text>
+            <text class="btn-text">
+              微信一键登录
+            </text>
           </view>
         </view>
 
         <view class="agreement" @tap.stop="agreed = !agreed">
           <view class="checkbox" :class="{ checked: agreed }">
-            <text v-if="agreed" class="check-icon">✓</text>
+            <text v-if="agreed" class="check-icon">
+              ✓
+            </text>
           </view>
           <view class="agreement-text">
-            <text class="tip">我已阅读并同意</text>
-            <text class="link" @tap.stop="navigateToUserAgreement">《用户协议》</text>
-            <text class="tip">和</text>
-            <text class="link" @tap.stop="navigateToPrivacyPolicy">《隐私政策》</text>
+            <text class="tip">
+              我已阅读并同意
+            </text>
+            <text class="link" @tap.stop="navigateToUserAgreement">
+              《用户协议》
+            </text>
+            <text class="tip">
+              和
+            </text>
+            <text class="link" @tap.stop="navigateToPrivacyPolicy">
+              《隐私政策》
+            </text>
           </view>
         </view>
       </template>
@@ -156,10 +177,16 @@ function navigateToPrivacyPolicy() {
       <template v-if="step === 2">
         <view class="login-header">
           <view class="phone-icon-wrap">
-            <text class="phone-icon">📱</text>
+            <text class="phone-icon">
+              📱
+            </text>
           </view>
-          <text class="title text-on-surface font-extrabold"> 绑定手机号 </text>
-          <text class="subtitle text-on-surface-variant"> 绑定手机号以获得更好的服务体验 </text>
+          <text class="title text-on-surface font-extrabold">
+            绑定手机号
+          </text>
+          <text class="subtitle text-on-surface-variant">
+            绑定手机号以获得更好的服务体验
+          </text>
         </view>
 
         <button
@@ -169,12 +196,16 @@ function navigateToPrivacyPolicy() {
           @getphonenumber="handleGetPhoneNumber"
         >
           <view class="btn-content">
-            <text class="btn-text"> 授权手机号 </text>
+            <text class="btn-text">
+              授权手机号
+            </text>
           </view>
         </button>
 
         <view class="skip-btn" @tap="skipPhoneNumber">
-          <text class="skip-text">暂不绑定，先去看看</text>
+          <text class="skip-text">
+            暂不绑定，先去看看
+          </text>
         </view>
       </template>
     </view>

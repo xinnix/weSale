@@ -1,24 +1,24 @@
+import { API_ENDPOINTS } from '@/config/api'
 /**
  * Agent 相关 API
  */
-import { http } from '@/utils/http';
-import { API_ENDPOINTS } from '@/config/api';
+import { http } from '@/utils/http'
 
 export interface Agent {
-  id: string;
-  name: string;
-  slug: string;
-  description?: string;
-  icon?: string;
-  difyAppType: string;
-  sort: number;
+  id: string
+  name: string
+  slug: string
+  description?: string
+  icon?: string
+  difyAppType: string
+  sort: number
 }
 
 export interface Conversation {
-  id: string;
-  name: string;
-  created_at: number;
-  updated_at: number;
+  id: string
+  name: string
+  created_at: number
+  updated_at: number
 }
 
 export const agentsApi = {
@@ -29,4 +29,4 @@ export const agentsApi = {
 
   getMessages: (agentId: string, conversationId: string, limit = 20) =>
     http.get<any>(API_ENDPOINTS.agentMessages(agentId, conversationId), { limit }),
-};
+}

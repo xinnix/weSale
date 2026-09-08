@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { useLoading } from '@/stores/loading';
-import GlobalLoading from '@/components/GlobalLoading.vue';
+import GlobalLoading from '@/components/GlobalLoading.vue'
+import { useLoading } from '@/stores/loading'
 
-const { state: loadingState } = useLoading();
+const { state: loadingState } = useLoading()
 
-onLaunch(() => {});
+onLaunch(() => {})
 </script>
 
 <template>

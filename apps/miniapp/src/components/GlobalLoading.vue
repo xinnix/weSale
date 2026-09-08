@@ -1,57 +1,60 @@
-<template>
-  <view v-if="isVisible" class="loading-container">
-    <view class="loading-mask"></view>
-    <view class="loading-content">
-      <!-- 装饰背景 -->
-      <view class="loading-bg"></view>
-
-      <!-- Logo + 动画 -->
-      <view class="loading-logo-wrapper">
-        <image class="loading-logo" src="/static/logo.png" mode="aspectFit" />
-        <view class="loading-pulse"></view>
-      </view>
-
-      <!-- 加载文案 -->
-      <text class="loading-text">{{ text }}</text>
-
-      <!-- 进度条动画 -->
-      <view class="loading-progress">
-        <view class="loading-progress-bar"></view>
-      </view>
-    </view>
-  </view>
-</template>
-
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch } from 'vue'
 
 interface Props {
-  visible: boolean;
-  text?: string;
+  visible: boolean
+  text?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   visible: false,
   text: '加载中...',
-});
+})
 
-const isVisible = ref(false);
+const isVisible = ref(false)
 
 // 淡入淡出动画
 watch(
   () => props.visible,
   (newVal) => {
     if (newVal) {
-      isVisible.value = true;
-    } else {
+      isVisible.value = true
+    }
+    else {
       // 延迟消失，实现淡出效果
       setTimeout(() => {
-        isVisible.value = false;
-      }, 200);
+        isVisible.value = false
+      }, 200)
     }
   },
-);
+)
 </script>
+
+<template>
+  <view v-if="isVisible" class="loading-container">
+    <view class="loading-mask" />
+    <view class="loading-content">
+      <!-- 装饰背景 -->
+      <view class="loading-bg" />
+
+      <!-- Logo + 动画 -->
+      <view class="loading-logo-wrapper">
+        <image class="loading-logo" src="/static/logo.png" mode="aspectFit" />
+        <view class="loading-pulse" />
+      </view>
+
+      <!-- 加载文案 -->
+      <text class="loading-text">
+        {{ text }}
+      </text>
+
+      <!-- 进度条动画 -->
+      <view class="loading-progress">
+        <view class="loading-progress-bar" />
+      </view>
+    </view>
+  </view>
+</template>
 
 <style lang="scss" scoped>
 .loading-container {

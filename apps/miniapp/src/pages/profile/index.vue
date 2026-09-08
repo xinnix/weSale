@@ -1,84 +1,80 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { onShow } from '@dcloudio/uni-app';
-import { API_CONFIG } from '@/config/api';
-import { uploadAvatar } from '@/api/upload';
-import { authApi } from '@/api/auth';
+import { onShow } from '@dcloudio/uni-app'
+import { onMounted, ref } from 'vue'
+import { authApi } from '@/api/auth'
+import { uploadAvatar } from '@/api/upload'
+import { API_CONFIG } from '@/config/api'
 
 definePage({
   style: {
     navigationStyle: 'custom',
     backgroundColor: '#F5FAFF',
   },
-});
+})
 
-const statusBarHeight = ref(0);
-const loading = ref(false);
+const statusBarHeight = ref(0)
+const loading = ref(false)
 const userInfo = ref<{
-  username?: string;
-  email?: string;
-  nickname?: string;
-  phone?: string;
-  avatar?: string;
+  username?: string
+  email?: string
+  nickname?: string
+  phone?: string
+  avatar?: string
 }>({
   username: '',
   email: '',
   nickname: '',
   phone: '',
   avatar: '',
-});
-const originalUserInfo = ref<any>(null);
+})
+const originalUserInfo = ref<any>(null)
 
 onMounted(() => {
-  const sysInfo = uni.getSystemInfoSync();
-  statusBarHeight.value = sysInfo.statusBarHeight || 0;
+  const sysInfo = uni.getSystemInfoSync()
+  statusBarHeight.value = sysInfo.statusBarHeight || 0
 
   // 获取用户信息
-  const storedUserInfo = uni.getStorageSync('userInfo');
+  const storedUserInfo = uni.getStorageSync('userInfo')
   if (storedUserInfo) {
-    userInfo.value = { ...storedUserInfo };
-    originalUserInfo.value = { ...storedUserInfo };
+    userInfo.value = { ...storedUserInfo }
+    originalUserInfo.value = { ...storedUserInfo }
   }
-});
+})
 
 // 页面显示时刷新用户信息
 onShow(async () => {
-  const token = uni.getStorageSync('token');
+  const token = uni.getStorageSync('token')
   if (token) {
     try {
-      const res = await authApi.getProfile();
+      const res = await authApi.getProfile()
       if (res.data) {
-        userInfo.value = { ...res.data };
-        originalUserInfo.value = { ...res.data };
-        uni.setStorageSync('userInfo', res.data);
+        userInfo.value = { ...res.data }
+        originalUserInfo.value = { ...res.data }
+        uni.setStorageSync('userInfo', res.data)
       }
-    } catch (error) {
-      console.error('刷新用户信息失败:', error);
+    }
+    catch (error) {
+      console.error('刷新用户信息失败:', error)
     }
   }
-});
-
-function goBack() {
-  uni.navigateBack();
-}
+})
 
 async function onChooseAvatar(event: any) {
-  const avatarUrl = event.detail.avatarUrl;
+  const avatarUrl = event.detail.avatarUrl
   if (avatarUrl) {
     // 先显示临时头像
-    userInfo.value.avatar = avatarUrl;
+    userInfo.value.avatar = avatarUrl
 
     // 上传到服务器获取永久 URL
-    uni.showLoading({ title: '上传头像...', mask: true });
+    uni.showLoading({ title: '上传头像...', mask: true })
     try {
-      const permanentUrl = await uploadAvatar(avatarUrl);
-      console.log('✅ 获取到永久 URL:', permanentUrl);
+      const permanentUrl = await uploadAvatar(avatarUrl)
 
       // 更新本地状态
-      userInfo.value.avatar = permanentUrl;
+      userInfo.value.avatar = permanentUrl
 
       // 立即保存到数据库
-      const token = uni.getStorageSync('token');
+      const token = uni.getStorageSync('token')
       if (token) {
         await uni.request({
           url: `${API_CONFIG.baseURL}/auth/me`,
@@ -89,45 +85,45 @@ async function onChooseAvatar(event: any) {
           data: {
             avatar: permanentUrl,
           },
-        });
+        })
 
         // 更新本地存储
-        uni.setStorageSync('userInfo', userInfo.value);
-        console.log('✅ 头像已保存到数据库');
+        uni.setStorageSync('userInfo', userInfo.value)
       }
 
-      uni.hideLoading();
-      uni.showToast({ title: '头像上传成功', icon: 'success' });
-    } catch (error: any) {
-      uni.hideLoading();
-      console.error('❌ 上传头像失败:', error);
-      uni.showToast({ title: error.message || '上传失败', icon: 'none' });
+      uni.hideLoading()
+      uni.showToast({ title: '头像上传成功', icon: 'success' })
+    }
+    catch (error: any) {
+      uni.hideLoading()
+      console.error('❌ 上传头像失败:', error)
+      uni.showToast({ title: error.message || '上传失败', icon: 'none' })
       // 上传失败时，恢复原始头像
       if (originalUserInfo.value?.avatar) {
-        userInfo.value.avatar = originalUserInfo.value.avatar;
+        userInfo.value.avatar = originalUserInfo.value.avatar
       }
     }
   }
 }
 
 function onNicknameChange(event: any) {
-  const nickname = event.detail.value;
+  const nickname = event.detail.value
   if (nickname) {
-    userInfo.value.nickname = nickname;
+    userInfo.value.nickname = nickname
   }
 }
 
 async function getPhoneNumber(event: any) {
   if (event.detail.errMsg !== 'getPhoneNumber:ok') {
-    uni.showToast({ title: '授权取消', icon: 'none' });
-    return;
+    uni.showToast({ title: '授权取消', icon: 'none' })
+    return
   }
 
-  loading.value = true;
+  loading.value = true
   try {
-    const token = uni.getStorageSync('token');
+    const token = uni.getStorageSync('token')
     if (!token) {
-      throw new Error('请先登录');
+      throw new Error('请先登录')
     }
 
     // 调用后端接口获取手机号
@@ -140,18 +136,16 @@ async function getPhoneNumber(event: any) {
       data: {
         code: event.detail.code,
       },
-    });
+    })
 
     if (res.statusCode === 200 && res.data) {
-      const response = res.data as any;
-      console.log('📱 手机号授权响应:', response);
+      const response = res.data as any
 
       // 后端返回的是 { success: true, data: { phoneNumber: "xxx" } }
-      const phoneNumber = response.data?.phoneNumber;
-      console.log('📱 phoneNumber 值:', phoneNumber);
+      const phoneNumber = response.data?.phoneNumber
 
       if (phoneNumber) {
-        userInfo.value.phone = phoneNumber;
+        userInfo.value.phone = phoneNumber
 
         // 立即保存到数据库
         await uni.request({
@@ -163,37 +157,40 @@ async function getPhoneNumber(event: any) {
           data: {
             phone: phoneNumber,
           },
-        });
+        })
 
         // 更新本地存储
-        uni.setStorageSync('userInfo', userInfo.value);
-        console.log('✅ 手机号已保存到数据库:', userInfo.value.phone);
-        uni.showToast({ title: '手机号授权成功', icon: 'success' });
-      } else {
-        console.error('❌ 后端未返回 phoneNumber');
-        throw new Error('授权失败：未获取到手机号');
+        uni.setStorageSync('userInfo', userInfo.value)
+        uni.showToast({ title: '手机号授权成功', icon: 'success' })
       }
-    } else {
-      throw new Error('授权失败');
+      else {
+        console.error('❌ 后端未返回 phoneNumber')
+        throw new Error('授权失败：未获取到手机号')
+      }
     }
-  } catch (error: any) {
-    uni.showToast({ title: error.message || '授权失败', icon: 'none' });
-  } finally {
-    loading.value = false;
+    else {
+      throw new Error('授权失败')
+    }
+  }
+  catch (error: any) {
+    uni.showToast({ title: error.message || '授权失败', icon: 'none' })
+  }
+  finally {
+    loading.value = false
   }
 }
 
 async function handleSave() {
   if (!userInfo.value.nickname || userInfo.value.nickname.trim() === '') {
-    uni.showToast({ title: '请输入昵称', icon: 'none' });
-    return;
+    uni.showToast({ title: '请输入昵称', icon: 'none' })
+    return
   }
 
-  loading.value = true;
+  loading.value = true
   try {
-    const token = uni.getStorageSync('token');
+    const token = uni.getStorageSync('token')
     if (!token) {
-      throw new Error('请先登录');
+      throw new Error('请先登录')
     }
 
     // 调用后端接口更新用户信息
@@ -208,19 +205,21 @@ async function handleSave() {
         avatar: userInfo.value.avatar,
         phone: userInfo.value.phone, // 同时保存手机号
       },
-    });
+    })
 
     // 更新本地存储
-    uni.setStorageSync('userInfo', userInfo.value);
+    uni.setStorageSync('userInfo', userInfo.value)
 
-    uni.showToast({ title: '保存成功', icon: 'success' });
+    uni.showToast({ title: '保存成功', icon: 'success' })
     setTimeout(() => {
-      uni.navigateBack();
-    }, 1500);
-  } catch (error: any) {
-    uni.showToast({ title: error.message || '保存失败', icon: 'none' });
-  } finally {
-    loading.value = false;
+      uni.navigateBack()
+    }, 1500)
+  }
+  catch (error: any) {
+    uni.showToast({ title: error.message || '保存失败', icon: 'none' })
+  }
+  finally {
+    loading.value = false
   }
 }
 </script>
@@ -245,33 +244,41 @@ async function handleSave() {
             <text class="iconfont icon-camera avatar-camera-icon" />
           </view>
         </button>
-        <text class="avatar-tip"> 点击更换头像 </text>
+        <text class="avatar-tip">
+          点击更换头像
+        </text>
       </view>
 
       <!-- 表单字段 -->
       <view class="form-section">
         <!-- 昵称字段 -->
         <view class="form-item">
-          <text class="form-label"> 昵称 </text>
+          <text class="form-label">
+            昵称
+          </text>
           <input
             type="nickname"
             :value="userInfo.nickname"
             class="form-input"
             placeholder="请输入昵称"
             placeholder-class="form-input-placeholder"
-            maxlength="20"
+            :maxlength="20"
             @blur="onNicknameChange"
-          />
+          >
         </view>
 
         <!-- 手机号字段 -->
         <view class="form-item">
-          <text class="form-label"> 手机号 </text>
+          <text class="form-label">
+            手机号
+          </text>
           <view class="phone-field">
             <text v-if="userInfo.phone" class="phone-number">
               {{ userInfo.phone }}
             </text>
-            <text v-else class="phone-placeholder"> 未绑定 </text>
+            <text v-else class="phone-placeholder">
+              未绑定
+            </text>
             <button
               class="phone-btn"
               open-type="getPhoneNumber"
@@ -291,7 +298,9 @@ async function handleSave() {
         <view class="info-content">
           <text class="iconfont icon-shield info-icon" />
           <view class="info-text">
-            <text class="info-title"> 账号安全说明 </text>
+            <text class="info-title">
+              账号安全说明
+            </text>
             <text class="info-desc">
               为了保障社区安全，真实身份信息已加密处理。修改昵称不会影响您的会员权益发放。
             </text>
@@ -303,7 +312,9 @@ async function handleSave() {
     <!-- 底部保存按钮 -->
     <view class="footer">
       <view class="save-btn" :class="{ 'save-btn-disabled': loading }" @tap="handleSave">
-        <text class="save-btn-text"> 保存修改 </text>
+        <text class="save-btn-text">
+          保存修改
+        </text>
         <text class="iconfont icon-check save-btn-icon" />
       </view>
     </view>

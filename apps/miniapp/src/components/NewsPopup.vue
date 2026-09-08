@@ -1,54 +1,55 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { computed, ref } from 'vue'
 
 interface Props {
   news: {
-    id: string;
-    title: string;
-    bannerUrl?: string;
-    content?: string;
-  };
+    id: string
+    title: string
+    bannerUrl?: string
+    content?: string
+  }
 }
 
-const props = defineProps<Props>();
+const props = defineProps<Props>()
 const emit = defineEmits<{
-  close: [];
-  goToDetail: [id: string];
-}>();
+  close: []
+  goToDetail: [id: string]
+}>()
 
 // 是否显示弹窗
-const visible = ref(true);
+const visible = ref(true)
 
 // 关闭弹窗
 function handleClose() {
-  visible.value = false;
+  visible.value = false
   // 记录用户关闭次数
-  const closedPopups = uni.getStorageSync('closedPopups') || {};
-  const record = closedPopups[props.news.id] || { count: 0, lastClosed: null };
+  const closedPopups = uni.getStorageSync('closedPopups') || {}
+  const record = closedPopups[props.news.id] || { count: 0, lastClosed: null }
 
   // 增加关闭次数
   closedPopups[props.news.id] = {
     count: record.count + 1,
     lastClosed: new Date().toISOString(),
-  };
+  }
 
-  uni.setStorageSync('closedPopups', closedPopups);
-  emit('close');
+  uni.setStorageSync('closedPopups', closedPopups)
+  emit('close')
 }
 
 // 查看详情
 function handleViewDetail() {
-  handleClose();
-  emit('goToDetail', props.news.id);
+  handleClose()
+  emit('goToDetail', props.news.id)
 }
 
 // 格式化内容摘要
 const contentSummary = computed(() => {
-  if (!props.news.content) return '';
+  if (!props.news.content)
+    return ''
   // 移除 HTML 标签，提取纯文本
-  const text = props.news.content.replace(/<[^>]*>/g, '');
-  return text.length > 100 ? text.substring(0, 100) + '...' : text;
-});
+  const text = props.news.content.replace(/<[^>]*>/g, '')
+  return text.length > 100 ? `${text.substring(0, 100)}...` : text
+})
 </script>
 
 <template>
@@ -63,22 +64,30 @@ const contentSummary = computed(() => {
 
         <!-- 标题 -->
         <view class="popup-title">
-          <text class="title-text">{{ news.title }}</text>
+          <text class="title-text">
+            {{ news.title }}
+          </text>
         </view>
 
         <!-- 内容摘要 -->
         <view v-if="contentSummary" class="popup-content">
-          <text class="content-text">{{ contentSummary }}</text>
+          <text class="content-text">
+            {{ contentSummary }}
+          </text>
         </view>
 
         <!-- 操作按钮 -->
         <view class="popup-actions">
-          <button class="action-button primary" @click="handleViewDetail">查看详情</button>
+          <button class="action-button primary" @click="handleViewDetail">
+            查看详情
+          </button>
         </view>
 
         <!-- 关闭按钮 -->
         <view class="close-button" @click="handleClose">
-          <text class="close-icon">✕</text>
+          <text class="close-icon">
+            ✕
+          </text>
         </view>
       </view>
     </view>

@@ -89,7 +89,7 @@ export const SessionChatPage = () => {
     try {
       const data = await trpc.wechatKf.session.getOne.query({ id });
       setSession(data);
-    } catch (e: any) {
+    } catch {
       message.error('加载会话失败');
     } finally {
       setLoading(false);
@@ -151,7 +151,7 @@ export const SessionChatPage = () => {
       setNoteModalOpen(false);
       setNoteText('');
       fetchSession();
-    } catch (e: any) {
+    } catch {
       message.error('添加备注失败');
     } finally {
       setSending(false);
@@ -164,7 +164,7 @@ export const SessionChatPage = () => {
       await trpc.wechatKf.session.takeOver.mutate({ id });
       message.success('已接手会话');
       fetchSession();
-    } catch (e: any) {
+    } catch {
       message.error('接手失败');
     }
   };
@@ -175,7 +175,7 @@ export const SessionChatPage = () => {
       await trpc.wechatKf.session.closeSession.mutate({ id });
       message.success('已关闭会话');
       fetchSession();
-    } catch (e: any) {
+    } catch {
       message.error('关闭失败');
     }
   };
@@ -188,7 +188,7 @@ export const SessionChatPage = () => {
         data: { intentLevel },
       });
       fetchSession();
-    } catch (e: any) {
+    } catch {
       message.error('更新失败');
     }
   };
