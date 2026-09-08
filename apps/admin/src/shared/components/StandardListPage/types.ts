@@ -1,6 +1,6 @@
 // StandardListPage 类型定义
 
-import type { FormInstance } from 'antd/es/form';
+import type { FormInstance } from 'antd/es/form/Form';
 import type { ColumnType } from 'antd/es/table';
 import type { ReactNode } from 'react';
 

@@ -1,7 +1,8 @@
 // StandardForm 类型定义
 
-import { ReactNode, Rule } from 'antd';
-import { FormInstance } from 'antd/es/form';
+import type { ReactNode } from 'react';
+import type { Rule } from 'antd/es/form';
+import type { FormInstance } from 'antd/es/form/Form';
 
 /**
  * 字段类型

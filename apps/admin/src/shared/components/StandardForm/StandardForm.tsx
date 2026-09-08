@@ -1,7 +1,6 @@
 import { Form, Input, InputNumber, Select, Switch, Checkbox, DatePicker } from 'antd';
 import { useList } from '@refinedev/core';
-import { useWatch } from 'antd/es/form/Form';
-import type { FormInstance } from 'antd/es/form';
+import { useWatch, type FormInstance } from 'antd/es/form/Form';
 import type { StandardFormProps, FieldDefinition } from './types';
 import { OSSUpload } from '../OSSUpload';
 import { OSSUploadMultiple } from '../OSSUploadMultiple';

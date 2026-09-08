@@ -15,6 +15,8 @@ import { AgentListPage, AgentChatPage } from './modules/agents';
 import { WecomConfigListPage, WecomMessageListPage, WecomEventListPage } from './modules/wecom';
 import { ContactListPage, SessionListPage, SessionChatPage, KfAccountListPage } from './modules/kf';
 import { LandingStatsPage } from './modules/landing-stats';
+import { DashboardPage } from './modules/dashboard';
+import { ProductListPage, OrderListPage, OrderDetailPage } from './modules/product';
 import { useMessageInitializer } from './shared/hooks/useMessageInitializer';
 // Create QueryClient outside component to prevent re-creation
 const queryClient = new QueryClient({
@@ -83,13 +85,16 @@ function AppContent() {
           { name: 'wecom.event', list: '/wecom/events' },
           { name: 'wechatKf.contact', list: '/kf/contacts' },
           { name: 'wechatKf.session', list: '/kf/sessions' },
+          { name: 'product', list: '/products' },
+          { name: 'order', list: '/orders' },
         ]}
       >
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/unauthorized" element={<SessionExpiredPage />} />
           <Route path="/" element={<AdminLayout />}>
-            <Route index element={<Navigate to="/users" replace />} />
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<DashboardPage />} />
             <Route path="users" element={<UserListPage />} />
             <Route path="users/:id" element={<UserDetailPage />} />
             <Route path="roles" element={<RoleListPage />} />
@@ -106,6 +111,9 @@ function AppContent() {
             <Route path="kf/sessions/:id" element={<SessionChatPage />} />
             <Route path="kf/accounts" element={<KfAccountListPage />} />
             <Route path="landing-stats" element={<LandingStatsPage />} />
+            <Route path="products" element={<ProductListPage />} />
+            <Route path="orders" element={<OrderListPage />} />
+            <Route path="orders/:id" element={<OrderDetailPage />} />
           </Route>
           <Route path="/404" element={<NotFoundPage />} />
           <Route path="*" element={<NotFoundPage />} />

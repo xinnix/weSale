@@ -128,7 +128,14 @@ export function StandardListPage<T extends Record<string, unknown> = Record<stri
 
       return filters;
     },
-    [debouncedSearchValues, filterValues, searchFields, filterFields],
+    // Serialize arrays to stable strings to avoid reference instability
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      JSON.stringify(debouncedSearchValues),
+      JSON.stringify(filterValues),
+      JSON.stringify(searchFields),
+      JSON.stringify(filterFields),
+    ],
   );
 
   // useTable Hook
@@ -392,24 +399,28 @@ export function StandardListPage<T extends Record<string, unknown> = Record<stri
       </List>
 
       {/* Create/Edit Modal */}
-      {formComponent && (
-        <Modal
-          title={editingRecord ? `编辑${title}` : `新建${title}`}
-          open={isModalVisible}
-          onOk={handleSubmit}
-          onCancel={() => setIsModalVisible(false)}
-          okText="确定"
-          cancelText="取消"
-          width={formWidth}
-          destroyOnClose
-        >
-          {renderModalContent ? (
-            renderModalContent()
-          ) : (
-            <formComponent form={form} isEdit={!!editingRecord} />
-          )}
-        </Modal>
-      )}
+      {formComponent &&
+        (() => {
+          const FormComponent = formComponent;
+          return (
+            <Modal
+              title={editingRecord ? `编辑${title}` : `新建${title}`}
+              open={isModalVisible}
+              onOk={handleSubmit}
+              onCancel={() => setIsModalVisible(false)}
+              okText="确定"
+              cancelText="取消"
+              width={formWidth}
+              destroyOnClose
+            >
+              {renderModalContent ? (
+                renderModalContent()
+              ) : (
+                <FormComponent form={form} isEdit={!!editingRecord} />
+              )}
+            </Modal>
+          );
+        })()}
     </div>
   );
 }

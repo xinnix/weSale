@@ -14,6 +14,9 @@ import {
   MessageOutlined,
   ThunderboltOutlined,
   TeamOutlined,
+  ShoppingOutlined,
+  FileTextOutlined,
+  DashboardOutlined,
 } from '@ant-design/icons';
 import { useState, useMemo } from 'react';
 import { useAuth } from '../auth';
@@ -23,6 +26,7 @@ import { ChangePasswordModal } from '../components/ChangePasswordModal';
 const { Header, Sider, Content } = Layout;
 
 const iconMap: Record<string, React.ReactNode> = {
+  DashboardOutlined: <DashboardOutlined />,
   AppstoreOutlined: <SettingOutlined />,
   EditOutlined: <EditOutlined />,
   RobotOutlined: <RobotOutlined />,
@@ -33,10 +37,13 @@ const iconMap: Record<string, React.ReactNode> = {
   MessageOutlined: <MessageOutlined />,
   ThunderboltOutlined: <ThunderboltOutlined />,
   TeamOutlined: <TeamOutlined />,
+  ShoppingOutlined: <ShoppingOutlined />,
+  FileTextOutlined: <FileTextOutlined />,
 };
 
 // prettier-ignore
 const menuConfig = [
+  { key: "/dashboard", label: "工作台", icon: "DashboardOutlined", permission: null },
   {
     key: "ai",
     label: "AI 助手",
@@ -44,6 +51,16 @@ const menuConfig = [
     permission: null,
     children: [
       { key: "/agents", label: "Agent 管理", icon: "RobotOutlined", permission: "menu:agents" },
+    ],
+  },
+  {
+    key: "sales",
+    label: "产品销售",
+    icon: "ShoppingOutlined",
+    permission: null,
+    children: [
+      { key: "/products", label: "产品管理", icon: "ShoppingOutlined", permission: null },
+      { key: "/orders", label: "订单管理", icon: "FileTextOutlined", permission: null },
     ],
   },
   {
@@ -97,18 +114,26 @@ export function AdminLayout() {
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
 
-  const allMenuItems = menuConfig.map((group) => ({
-    key: group.key,
-    icon: iconMap[group.icon] || <SettingOutlined />,
-    label: group.label,
-    children: group.children.map((item) => ({
-      key: item.key,
-      permission: item.permission,
-      icon: iconMap[item.icon] || <SettingOutlined />,
-      label: item.label,
-      onClick: () => navigate(item.key),
-    })),
-  }));
+  const allMenuItems = menuConfig.map((group) => {
+    const base: any = {
+      key: group.key,
+      icon: iconMap[group.icon] || <SettingOutlined />,
+      label: group.label,
+    };
+    if ('children' in group && group.children) {
+      base.children = group.children.map((item: any) => ({
+        key: item.key,
+        permission: item.permission,
+        icon: iconMap[item.icon] || <SettingOutlined />,
+        label: item.label,
+        onClick: () => navigate(item.key),
+      }));
+    } else {
+      base.permission = group.permission;
+      base.onClick = () => navigate(group.key);
+    }
+    return base;
+  });
 
   const filterMenuByPermission = (items: any[]): any[] => {
     const hasSuperAdminRole = user?.roles?.some((r: any) => r?.slug === 'super_admin') || false;
@@ -164,7 +189,7 @@ export function AdminLayout() {
 
   const getDefaultOpenKeys = () => {
     for (const group of menuConfig) {
-      if (group.children.some((item) => location.pathname.startsWith(item.key))) {
+      if (group.children && group.children.some((item) => location.pathname.startsWith(item.key))) {
         return [group.key];
       }
     }
