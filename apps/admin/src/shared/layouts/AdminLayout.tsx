@@ -45,15 +45,6 @@ const iconMap: Record<string, React.ReactNode> = {
 const menuConfig = [
   { key: "/dashboard", label: "工作台", icon: "DashboardOutlined", permission: null },
   {
-    key: "ai",
-    label: "AI 助手",
-    icon: "RobotOutlined",
-    permission: null,
-    children: [
-      { key: "/agents", label: "Agent 管理", icon: "RobotOutlined", permission: "menu:agents" },
-    ],
-  },
-  {
     key: "sales",
     label: "产品销售",
     icon: "ShoppingOutlined",
@@ -227,7 +218,7 @@ export function AdminLayout() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <img src="../logo.png" alt="" width={36} height={36} />
               <div style={{ color: '#fff', fontWeight: 600, fontSize: 16, whiteSpace: 'nowrap' }}>
-                OpenCode
+                weSale 商家工作台
               </div>
             </div>
           )}

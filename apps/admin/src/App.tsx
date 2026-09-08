@@ -11,7 +11,6 @@ import { AdminLayout } from './shared/layouts';
 import { AdminListPage, AdminDetailPage } from './modules/admin';
 import { UserListPage, UserDetailPage } from './modules/user';
 import { RoleListPage, RoleDetailPage } from './modules/role';
-import { AgentListPage, AgentChatPage } from './modules/agents';
 import { WecomConfigListPage, WecomMessageListPage, WecomEventListPage } from './modules/wecom';
 import { ContactListPage, SessionListPage, SessionChatPage, KfAccountListPage } from './modules/kf';
 import { LandingStatsPage } from './modules/landing-stats';
@@ -79,7 +78,6 @@ function AppContent() {
           { name: 'user', list: '/users' },
           { name: 'admin', list: '/admins' },
           { name: 'role', list: '/roles' },
-          { name: 'agents', list: '/agents' },
           { name: 'wecom.config', list: '/wecom' },
           { name: 'wecom.message', list: '/wecom/messages' },
           { name: 'wecom.event', list: '/wecom/events' },
@@ -101,8 +99,6 @@ function AppContent() {
             <Route path="roles/:id" element={<RoleDetailPage />} />
             <Route path="admins" element={<AdminListPage />} />
             <Route path="admins/:id" element={<AdminDetailPage />} />
-            <Route path="agents" element={<AgentListPage />} />
-            <Route path="agents/chat/:id" element={<AgentChatPage />} />
             <Route path="wecom" element={<WecomConfigListPage />} />
             <Route path="wecom/messages" element={<WecomMessageListPage />} />
             <Route path="wecom/events" element={<WecomEventListPage />} />
