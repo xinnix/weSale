@@ -42,7 +42,7 @@ const tabBarList = computed(() => {
 })
 
 function toLink(path: string) {
-  if (props.current === tabs.findIndex(t => t.pagePath === path)) {
+  if (props.current === tabs.findIndex((t) => t.pagePath === path)) {
     return
   }
 

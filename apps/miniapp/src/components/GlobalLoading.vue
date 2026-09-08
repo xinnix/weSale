@@ -19,8 +19,7 @@ watch(
   (newVal) => {
     if (newVal) {
       isVisible.value = true
-    }
-    else {
+    } else {
       // 延迟消失，实现淡出效果
       setTimeout(() => {
         isVisible.value = false

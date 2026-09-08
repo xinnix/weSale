@@ -44,8 +44,7 @@ function handleViewDetail() {
 
 // 格式化内容摘要
 const contentSummary = computed(() => {
-  if (!props.news.content)
-    return ''
+  if (!props.news.content) return ''
   // 移除 HTML 标签，提取纯文本
   const text = props.news.content.replace(/<[^>]*>/g, '')
   return text.length > 100 ? `${text.substring(0, 100)}...` : text

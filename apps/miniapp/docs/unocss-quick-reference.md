@@ -16,8 +16,8 @@
 
 ```typescript
 // uno.config.ts
-import { presetUni } from '@uni-helper/unocss-preset-uni';
-import { defineConfig, presetUno } from 'unocss';
+import { presetUni } from '@uni-helper/unocss-preset-uni'
+import { defineConfig, presetUno } from 'unocss'
 
 export default defineConfig({
   presets: [
@@ -25,7 +25,7 @@ export default defineConfig({
     presetUno(), // 必须
     // 不要用 presetIcons
   ],
-});
+})
 ```
 
 ### 🎯 转换模板
@@ -45,7 +45,7 @@ export default defineConfig({
 // ❌ :class="[isActive ? 'active' : 'inactive']"
 // ✅
 function getClass() {
-  return isActive.value ? 'active' : 'inactive';
+  return isActive.value ? 'active' : 'inactive'
 }
 ```
 

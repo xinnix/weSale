@@ -25,13 +25,11 @@ export async function uploadAvatar(filePath: string): Promise<string> {
           const response = JSON.parse(res.data) as any
           if (response.success && response.data?.url) {
             resolve(response.data.url)
-          }
-          else {
+          } else {
             console.error('❌ 上传响应格式错误:', response)
             reject(new Error(response.message || '上传失败'))
           }
-        }
-        else {
+        } else {
           console.error('❌ 上传状态码错误:', res.statusCode)
           reject(new Error('上传失败'))
         }
@@ -70,13 +68,11 @@ export async function uploadImage(filePath: string, type: string = 'general'): P
           const response = JSON.parse(res.data) as any
           if (response.success && response.data?.url) {
             resolve(response.data.url)
-          }
-          else {
+          } else {
             console.error('❌ 上传响应格式错误:', response)
             reject(new Error(response.message || '上传失败'))
           }
-        }
-        else {
+        } else {
           console.error('❌ 上传状态码错误:', res.statusCode)
           reject(new Error('上传失败'))
         }

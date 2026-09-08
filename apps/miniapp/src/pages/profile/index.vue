@@ -52,8 +52,7 @@ onShow(async () => {
         originalUserInfo.value = { ...res.data }
         uni.setStorageSync('userInfo', res.data)
       }
-    }
-    catch (error) {
+    } catch (error) {
       console.error('刷新用户信息失败:', error)
     }
   }
@@ -93,8 +92,7 @@ async function onChooseAvatar(event: any) {
 
       uni.hideLoading()
       uni.showToast({ title: '头像上传成功', icon: 'success' })
-    }
-    catch (error: any) {
+    } catch (error: any) {
       uni.hideLoading()
       console.error('❌ 上传头像失败:', error)
       uni.showToast({ title: error.message || '上传失败', icon: 'none' })
@@ -162,20 +160,16 @@ async function getPhoneNumber(event: any) {
         // 更新本地存储
         uni.setStorageSync('userInfo', userInfo.value)
         uni.showToast({ title: '手机号授权成功', icon: 'success' })
-      }
-      else {
+      } else {
         console.error('❌ 后端未返回 phoneNumber')
         throw new Error('授权失败：未获取到手机号')
       }
-    }
-    else {
+    } else {
       throw new Error('授权失败')
     }
-  }
-  catch (error: any) {
+  } catch (error: any) {
     uni.showToast({ title: error.message || '授权失败', icon: 'none' })
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -214,11 +208,9 @@ async function handleSave() {
     setTimeout(() => {
       uni.navigateBack()
     }, 1500)
-  }
-  catch (error: any) {
+  } catch (error: any) {
     uni.showToast({ title: error.message || '保存失败', icon: 'none' })
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }

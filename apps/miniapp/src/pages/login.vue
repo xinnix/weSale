@@ -41,8 +41,7 @@ async function onLoginTap() {
   try {
     const codeRes = await uni.login({ provider: 'weixin' })
     const code = codeRes.code
-    if (!code)
-      throw new Error('获取登录凭证失败')
+    if (!code) throw new Error('获取登录凭证失败')
 
     const res = await authApi.wechatLogin(code)
 
@@ -52,11 +51,9 @@ async function onLoginTap() {
 
     // 用户已有手机号则跳过第二步，否则进入第二步获取手机号
     step.value = 2
-  }
-  catch (error: any) {
+  } catch (error: any) {
     uni.showToast({ title: error.message || '登录失败', icon: 'none' })
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -72,11 +69,9 @@ async function handleGetPhoneNumber(event: any) {
   loading.value = true
   try {
     // 手机号获取 - 留空供业务方实现
-  }
-  catch (error) {
+  } catch (error) {
     console.error('手机号授权失败', error)
-  }
-  finally {
+  } finally {
     loading.value = false
     navigateAfterLogin()
   }
@@ -94,8 +89,7 @@ async function navigateAfterLogin() {
     setTimeout(() => {
       uni.navigateBack({ delta: 1 })
     }, 1000)
-  }
-  else {
+  } else {
     setTimeout(() => {
       uni.reLaunch({ url: '/pages/index' })
     }, 1000)

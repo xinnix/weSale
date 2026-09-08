@@ -34,14 +34,14 @@ pnpm add @unocss/transformer-applet -D
 
 ```typescript
 // uno.config.ts
-import transformerApplet from '@unocss/transformer-applet';
+import transformerApplet from '@unocss/transformer-applet'
 
 export default defineConfig({
   transformers: [
     transformerApplet(), // ⭐ 必须放在最前面！
     // ... 其他 transformers
   ],
-});
+})
 ```
 
 **自动转换结果**:
@@ -68,13 +68,13 @@ export default defineConfig({
 
 ```typescript
 // uno.config.ts
-import { presetUni } from '@uni-helper/unocss-preset-uni';
+import { presetUni } from '@uni-helper/unocss-preset-uni'
 
 export default defineConfig({
   presets: [
     presetUni(), // 自动处理 rpx 转换
   ],
-});
+})
 ```
 
 **转换规则** (基于 375px 设计稿):
@@ -134,7 +134,7 @@ text {
 // presetUni 会自动过滤不支持的 Reset 样式
 presets: [
   presetUni(), // ✅ 已内置处理
-];
+]
 ```
 
 ---
@@ -167,7 +167,7 @@ export default defineConfig({
       attributify: false, // ⭐ 禁用属性化模式
     }),
   ],
-});
+})
 ```
 
 ---
@@ -203,8 +203,8 @@ function getTextClass(color: string) {
     red: 'text-red',
     blue: 'text-blue',
     green: 'text-green',
-  };
-  return colorMap[color];
+  }
+  return colorMap[color]
 }
 ```
 
@@ -224,7 +224,7 @@ export default defineConfig({
     // 或者使用模式
     ...['red', 'blue', 'green'].map((c) => `text-${c}`),
   ],
-});
+})
 ```
 
 ---
@@ -262,13 +262,13 @@ export default defineConfig({
 
 ```typescript
 // uno.config.ts
-import { presetIcons } from 'unocss';
+import { presetIcons } from 'unocss'
 
 export default defineConfig({
   presets: [
     presetIcons(), // ⚠️ 小程序可能不支持，建议用 Emoji
   ],
-});
+})
 ```
 
 ```html
@@ -321,9 +321,9 @@ pnpm add -D unocss @uni-helper/unocss-preset-uni @unocss/transformer-applet
 ### 2. uno.config.ts
 
 ```typescript
-import { presetUni } from '@uni-helper/unocss-preset-uni';
-import transformerApplet from '@unocss/transformer-applet';
-import { defineConfig, transformerDirectives, transformerVariantGroup } from 'unocss';
+import { presetUni } from '@uni-helper/unocss-preset-uni'
+import transformerApplet from '@unocss/transformer-applet'
+import { defineConfig, transformerDirectives, transformerVariantGroup } from 'unocss'
 
 export default defineConfig({
   // ⭐ 预设配置
@@ -349,7 +349,7 @@ export default defineConfig({
 
   // ⭐ 快捷方式
   shortcuts: {
-    btn: 'px-4 py-2 rounded bg-primary text-white',
+    'btn': 'px-4 py-2 rounded bg-primary text-white',
     'no-scrollbar': 'overflow-x-auto overflow-y-hidden',
   },
 
@@ -362,21 +362,21 @@ export default defineConfig({
     'text-blue',
     // ...
   ],
-});
+})
 ```
 
 ### 3. vite.config.ts
 
 ```typescript
-import UnoCSS from 'unocss/vite';
-import Uni from '@dcloudio/vite-plugin-uni';
+import UnoCSS from 'unocss/vite'
+import Uni from '@dcloudio/vite-plugin-uni'
 
 export default defineConfig({
   plugins: [
     Uni(),
     UnoCSS(), // 添加 UnoCSS 插件
   ],
-});
+})
 ```
 
 ---

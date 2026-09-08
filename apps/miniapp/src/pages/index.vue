@@ -31,8 +31,7 @@ onShow(async () => {
         userInfo.value = res.data
         uni.setStorageSync('userInfo', res.data)
       }
-    }
-    catch (error) {
+    } catch (error) {
       console.error('获取用户信息失败:', error)
     }
   }

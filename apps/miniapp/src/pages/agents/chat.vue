@@ -40,8 +40,7 @@ function getAuthHeaders() {
 }
 
 async function handleSend() {
-  if (!query.value.trim() || !agentId.value || isStreaming.value)
-    return
+  if (!query.value.trim() || !agentId.value || isStreaming.value) return
 
   const userMsg: ChatMessage = {
     id: `user-${Date.now()}`,
@@ -81,8 +80,7 @@ async function handleSend() {
 
     while (true) {
       const { done, value } = await reader.read()
-      if (done)
-        break
+      if (done) break
 
       buffer += decoder.decode(value, { stream: true })
       const lines = buffer.split('\n')
@@ -91,14 +89,12 @@ async function handleSend() {
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           const jsonStr = line.slice(6).trim()
-          if (!jsonStr)
-            continue
+          if (!jsonStr) continue
           try {
             const event = JSON.parse(jsonStr)
 
             const lastIdx = messages.value.length - 1
-            if (lastIdx < 0)
-              continue
+            if (lastIdx < 0) continue
 
             switch (event.event) {
               case 'agent_message':
@@ -113,16 +109,13 @@ async function handleSend() {
                 uni.showToast({ title: event.message || '对话出错', icon: 'none' })
                 break
             }
-          }
-          catch {}
+          } catch {}
         }
       }
     }
-  }
-  catch {
+  } catch {
     uni.showToast({ title: '对话失败', icon: 'none' })
-  }
-  finally {
+  } finally {
     isStreaming.value = false
   }
 }

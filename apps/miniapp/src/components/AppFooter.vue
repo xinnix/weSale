@@ -2,8 +2,7 @@
 function handleClickGithub() {
   if (window?.open) {
     window.open('https://github.com/uni-helper/vitesse-uni-app')
-  }
-  else {
+  } else {
     uni.showToast({
       icon: 'none',
       title: '请使用浏览器打开',

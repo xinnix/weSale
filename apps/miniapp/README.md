@@ -104,8 +104,8 @@ VITE_API_BASE_URL=http://localhost:3000/api
 小程序可以使用 `@opencode/shared` 包中的类型和工具：
 
 ```typescript
-import { someUtil } from '@opencode/shared';
-import type { User } from '@opencode/shared';
+import { someUtil } from '@opencode/shared'
+import type { User } from '@opencode/shared'
 ```
 
 ## 注意事项
@@ -143,7 +143,7 @@ export const API_ENDPOINTS = {
   // ... 其他端点
   articles: '/article',
   articleDetail: (id: string) => `/article/${id}`,
-};
+}
 ```
 
 #### 2. 创建 API 文件
@@ -152,53 +152,53 @@ export const API_ENDPOINTS = {
 
 ```typescript
 // src/api/article.ts
-import { http } from '@/utils/http';
-import { API_ENDPOINTS } from '@/config/api';
+import { http } from '@/utils/http'
+import { API_ENDPOINTS } from '@/config/api'
 
 export interface Article {
-  id: string;
-  title: string;
-  content: string;
-  createdAt: string;
+  id: string
+  title: string
+  content: string
+  createdAt: string
 }
 
 export const articleApi = {
   getList: () => {
-    return http.get<Article[]>(API_ENDPOINTS.articles);
+    return http.get<Article[]>(API_ENDPOINTS.articles)
   },
 
   getDetail: (id: string) => {
-    return http.get<Article>(API_ENDPOINTS.articleDetail(id));
+    return http.get<Article>(API_ENDPOINTS.articleDetail(id))
   },
 
   create: (data: { title: string; content: string }) => {
-    return http.post<Article>(API_ENDPOINTS.articles, data);
+    return http.post<Article>(API_ENDPOINTS.articles, data)
   },
-};
+}
 ```
 
 #### 3. 在页面中使用
 
 ```vue
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { articleApi, type Article } from '@/api/article';
+import { ref, onMounted } from 'vue'
+import { articleApi, type Article } from '@/api/article'
 
-const articles = ref<Article[]>([]);
+const articles = ref<Article[]>([])
 
 const loadArticles = async () => {
   try {
-    const res = await articleApi.getList();
-    articles.value = res.data || [];
+    const res = await articleApi.getList()
+    articles.value = res.data || []
   } catch (error) {
-    console.error('加载失败:', error);
-    uni.showToast({ title: '加载失败', icon: 'none' });
+    console.error('加载失败:', error)
+    uni.showToast({ title: '加载失败', icon: 'none' })
   }
-};
+}
 
 onMounted(() => {
-  loadArticles();
-});
+  loadArticles()
+})
 </script>
 ```
 
@@ -206,16 +206,16 @@ onMounted(() => {
 
 ```typescript
 // GET 请求
-http.get<T>(url, params);
+http.get<T>(url, params)
 
 // POST 请求
-http.post<T>(url, data);
+http.post<T>(url, data)
 
 // PUT 请求
-http.put<T>(url, data);
+http.put<T>(url, data)
 
 // DELETE 请求
-http.delete<T>(url, data);
+http.delete<T>(url, data)
 ```
 
 ### 认证机制
@@ -223,13 +223,13 @@ http.delete<T>(url, data);
 登录后保存 token:
 
 ```typescript
-uni.setStorageSync('token', response.data.accessToken);
+uni.setStorageSync('token', response.data.accessToken)
 ```
 
 HTTP 工具会自动添加到请求头:
 
 ```typescript
-Authorization: `Bearer ${token}`;
+Authorization: `Bearer ${token}`
 ```
 
 ## 示例功能

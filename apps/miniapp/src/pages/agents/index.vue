@@ -18,11 +18,9 @@ onMounted(async () => {
   try {
     const res = await agentsApi.getActiveAgents()
     agents.value = res.data || []
-  }
-  catch (error) {
+  } catch (error) {
     console.error('Failed to load agents:', error)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 })

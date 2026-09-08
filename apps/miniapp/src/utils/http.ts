@@ -95,12 +95,10 @@ class HttpClient {
         }
 
         return true
-      }
-      catch (error) {
+      } catch (error) {
         console.error('[HTTP] Token 刷新异常:', error)
         return false
-      }
-      finally {
+      } finally {
         this.isRefreshing = false
         this.refreshPromise = null
       }
@@ -143,10 +141,10 @@ class HttpClient {
           // ✅ 处理 401 未授权错误（自动刷新 token）
           if (res.statusCode === 401) {
             // 判断是否是登录相关请求，如果是则不触发刷新
-            const isLoginRequest
-              = url.includes('/auth/login')
-                || url.includes('/auth/register')
-                || url.includes('/auth/wechat/login')
+            const isLoginRequest =
+              url.includes('/auth/login') ||
+              url.includes('/auth/register') ||
+              url.includes('/auth/wechat/login')
 
             if (isLoginRequest) {
               // 登录请求失败，直接拒绝
@@ -180,12 +178,10 @@ class HttpClient {
                       const retryResponse = retryRes.data as Response<T>
                       if (retryResponse.success !== false) {
                         resolve(retryResponse)
-                      }
-                      else {
+                      } else {
                         reject(retryResponse)
                       }
-                    }
-                    else {
+                    } else {
                       reject(retryRes.data)
                     }
                   },
@@ -200,8 +196,7 @@ class HttpClient {
                     reject(err)
                   },
                 })
-              }
-              else {
+              } else {
                 // Token 刷新失败，清除登录状态
                 uni.removeStorageSync('token')
                 uni.removeStorageSync('refreshToken')
@@ -228,8 +223,7 @@ class HttpClient {
                 hideLoading()
               }
               resolve(response)
-            }
-            else {
+            } else {
               // ✅ 隐藏 loading
               if (shouldShowLoading) {
                 hideLoading()
@@ -237,8 +231,7 @@ class HttpClient {
               // ❌ 移除自动 showToast，让页面自己处理
               reject(response)
             }
-          }
-          else {
+          } else {
             // ✅ 隐藏 loading
             if (shouldShowLoading) {
               hideLoading()
