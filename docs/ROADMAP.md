@@ -61,11 +61,11 @@ Phase 3  社群运营（群聊/定时推送/朋友圈辅助）              未�
 | 1.1 品牌替换（第二波） | 未开始    | 包名 `@opencode/*` → `@wesale/*`（5 个 package.json + 全局 import + pnpm install）；README/CLAUDE.md/AGENTS.md 重写                     |
 | 1.2 DI 修复（另一半）  | 未开始    | `wechat-kf.router.ts`/`wecom.router.ts` 仍模块级 `new` 服务（Redis 静默降级），注册模式已建立待推广                                     |
 
-### 📌 部署链路待决策（阻塞 CI 部分环节）
+### 📌 数据库迁移策略（已落地）
 
-- CI `migrate` job 需要 GitHub secret `PROD_DATABASE_URL`（未配置 → job 红，`build-and-push` 镜像构建被阻塞）
-- 选项：① 配置生产库连接串；② 暂时禁用 migrate job（只保留质量关卡）
-- CI 已绿的部分：type-check ✅ / lint ✅ / test ✅ / security-audit ✅
+- **CI 只保留质量关卡**：type-check / lint / test / security-audit / build-and-push（`migrate` job 已移除，不再需要 `PROD_DATABASE_URL` secret）
+- **迁移在部署时执行**：容器 entrypoint（`apps/api/entrypoint-final.sh`）启动时自动 `prisma migrate deploy`——含 DB 连通预检（5s 快速失败）、三级 Prisma CLI 查找兜底；设 `SKIP_MIGRATION=true` 可跳过迁移
+- CI 已全绿：type-check ✅ / lint ✅ / test ✅ / security-audit ✅
 
 ### 📌 本地调试环境（frp 隧道 + 企微 IP 白名单）
 
