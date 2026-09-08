@@ -50,22 +50,30 @@ Phase 3  社群运营（群聊/定时推送/朋友圈辅助）              未�
 
 ### 🔨 进行中 / 待办
 
-| 任务                   | 状态       | 说明                                                                                                                                    |
-| ---------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| **Spike 实测**         | ⏸ 等待配合 | 需在微信里给客服账号发消息打开 48h 窗口，然后跑 spike 脚本验证小程序卡片下发                                                            |
-| 1.5 用户端商城 REST    | 未开始     | `mall` 模块：商品列表/详情（复用 `/products/active`）、下单（地址快照）、我的订单、prepay、地址 CRUD                                    |
-| 1.7 小程序商城页面     | 未开始     | mall/商品详情/订单确认（含地址）/支付结果/订单列表/订单管理页 + 地址管理；**同时清理 11 个死页面注册**（当前 miniapp build 失败的根因） |
-| 1.8 KF 逼单真实化      | 未开始     | `kf.service.ts:510-521` 假链接替换：AI 建单（source=KF_SESSION）→ 发小程序卡片（依赖 spike 验证）                                       |
-| 1.9 系统体检页         | 未开始     | `system.router.ts`：企微/KF/支付/LLM 配置存在性检查 + admin 只读体检页                                                                  |
-| 1.10 部署文档          | 未开始     | `.env.example` 重写（补 `LLM_*`/`MINIAPP_APPID`）；小程序 appid=mchid 绑定约束等                                                        |
-| 1.1 品牌替换（第二波） | 未开始     | 包名 `@opencode/*` → `@wesale/*`（5 个 package.json + 全局 import + pnpm install）；README/CLAUDE.md/AGENTS.md 重写                     |
-| 1.2 DI 修复（另一半）  | 未开始     | `wechat-kf.router.ts`/`wecom.router.ts` 仍模块级 `new` 服务（Redis 静默降级），注册模式已建立待推广                                     |
+| 任务                   | 状态      | 说明                                                                                                                                    |
+| ---------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **Spike 实测**         | ✅ 已通过 | 2026-09-08 实测：小程序卡片下发 errcode=0，点击卡片正常打开小程序，企微无需额外关联配置                                                 |
+| 1.5 用户端商城 REST    | 未开始    | `mall` 模块：商品列表/详情（复用 `/products/active`）、下单（地址快照）、我的订单、prepay、地址 CRUD                                    |
+| 1.7 小程序商城页面     | 未开始    | mall/商品详情/订单确认（含地址）/支付结果/订单列表/订单管理页 + 地址管理；**同时清理 11 个死页面注册**（当前 miniapp build 失败的根因） |
+| 1.8 KF 逼单真实化      | 未开始    | `kf.service.ts:510-521` 假链接替换：AI 建单（source=KF_SESSION）→ 发小程序卡片（依赖 spike 验证）                                       |
+| 1.9 系统体检页         | 未开始    | `system.router.ts`：企微/KF/支付/LLM 配置存在性检查 + admin 只读体检页                                                                  |
+| 1.10 部署文档          | 未开始    | `.env.example` 重写（补 `LLM_*`/`MINIAPP_APPID`）；小程序 appid=mchid 绑定约束等                                                        |
+| 1.1 品牌替换（第二波） | 未开始    | 包名 `@opencode/*` → `@wesale/*`（5 个 package.json + 全局 import + pnpm install）；README/CLAUDE.md/AGENTS.md 重写                     |
+| 1.2 DI 修复（另一半）  | 未开始    | `wechat-kf.router.ts`/`wecom.router.ts` 仍模块级 `new` 服务（Redis 静默降级），注册模式已建立待推广                                     |
 
 ### 📌 部署链路待决策（阻塞 CI 部分环节）
 
 - CI `migrate` job 需要 GitHub secret `PROD_DATABASE_URL`（未配置 → job 红，`build-and-push` 镜像构建被阻塞）
 - 选项：① 配置生产库连接串；② 暂时禁用 migrate job（只保留质量关卡）
 - CI 已绿的部分：type-check ✅ / lint ✅ / test ✅ / security-audit ✅
+
+### 📌 本地调试环境（frp 隧道 + 企微 IP 白名单）
+
+- **回调链路（微信→本地）已通**：`https://wesale.classmaster.cn/api/wechat-kf/callback` → openresty(111.229.4.238, TLS) → frps → frpc（本机 Docker 容器 `frpc`，配置 `~/code/frp/frpc.toml`）→ `host.docker.internal:3000`。实测：curl 探测的请求出现在本地 NestJS 日志中
+- **60020 IP 白名单的真实边界（2026-09-08 实测确认）**：`kf/*` 专属 API（send_msg 等）**不受**可信 IP 校验；通用接口（`media/upload`）才校验。规避方式：封面图上传用自建应用 token（`uploadKfTempImage` 已带 kf→自建应用降级）。**无需在企微后台配置 IP**
+- 支付回调复用同一域名（`WX_PAY_NOTIFY_URL=https://wesale.classmaster.cn/api/payments/wechat/callback`），端到端支付可在本地开发机验收
+- **`.env` 修正记录**：`WX_WORK_KF_OPEN_KFID` 曾是脚手架占位符 `your-open-kfid`，已改为真实客服 ID（主进程不受影响，它从回调消息取 openKfId）
+- **可观测性待办**：`handleCallbackAndSync` 的 sync 异常会被 fire-and-forget 吞掉（2026-09-08 17:18 实测静默失败一次），需补 try/catch 错误日志
 
 ---
 

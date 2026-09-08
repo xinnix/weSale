@@ -7,7 +7,9 @@
  *
  * 运行：pnpm --filter @opencode/api exec tsx scripts/spike-kf-miniprogram.ts
  */
-import 'dotenv/config';
+import { config } from 'dotenv';
+// .env 在仓库根，dotenv 默认不向上查找
+config({ path: '../../.env' });
 import { PrismaClient } from '@opencode/database';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
@@ -47,11 +49,23 @@ async function main() {
   }
   console.log(`[spike] 接收人: ${contact.openId} (${contact.nickname ?? '未命名'})`);
 
-  // 2. 上传封面图
+  // 2. 上传封面图（media/upload 属通用接口，按自建应用校验可信 IP，
+  //    kf token 可能被 60020 挡——依次尝试 kf token 与自建应用 token）
   const coverPath = join(__dirname, '../../miniapp/src/static/share-default.png');
   const coverBuffer = readFileSync(coverPath);
   console.log(`[spike] 上传封面图 ${coverPath} (${coverBuffer.length} bytes)...`);
-  const mediaId = await kfApi.uploadKfTempImage(coverBuffer, 'share-default.png');
+  let mediaId: string;
+  try {
+    mediaId = await kfApi.uploadKfTempImage(coverBuffer, 'share-default.png');
+  } catch (err: any) {
+    if (!err.message.includes('60020')) throw err;
+    console.log('[spike] kf token 被拒（60020），改用自建应用 token 上传...');
+    const corpId = configService.get<string>('WX_WORK_CORP_ID', '');
+    const appSecret = configService.get<string>('WX_WORK_SECRET', '');
+    const appToken = await wecomApi.getAccessToken(corpId, appSecret);
+    const result = await wecomApi.uploadTempImage(appToken, coverBuffer, 'share-default.png');
+    mediaId = result.media_id;
+  }
   console.log(`[spike] ✅ media_id=${mediaId}`);
 
   // 3. 发送小程序卡片
