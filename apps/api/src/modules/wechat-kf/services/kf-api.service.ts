@@ -1,9 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as fs from 'fs';
 import { WecomApiService } from '../../wecom/services/wecom-api.service';
 
 @Injectable()
 export class WechatKfApiService {
+  private readonly logger = new Logger(WechatKfApiService.name);
   constructor(
     private readonly wecomApiService: WecomApiService,
     private readonly configService: ConfigService,
@@ -106,6 +108,26 @@ export class WechatKfApiService {
     const accessToken = await this.getAccessToken();
     const result = await this.wecomApiService.uploadTempImage(accessToken, buffer, filename);
     return result.media_id;
+  }
+
+  /**
+   * 上传小程序卡片默认封面图。
+   * media/upload 属通用接口，按自建应用校验可信 IP（errcode 60020），
+   * kf token 被拒时自动降级用自建应用 token 上传。
+   */
+  async uploadCardCover(coverPath: string): Promise<string> {
+    const buffer = fs.readFileSync(coverPath);
+    try {
+      return await this.uploadKfTempImage(buffer, 'card-cover.png');
+    } catch (err: any) {
+      if (!err.message.includes('60020')) throw err;
+      this.logger.warn('kf token 上传被 60020 拒绝，降级用自建应用 token');
+      const corpId = this.configService.get<string>('WX_WORK_CORP_ID', '');
+      const appSecret = this.configService.get<string>('WX_WORK_SECRET', '');
+      const appToken = await this.wecomApiService.getAccessToken(corpId, appSecret);
+      const result = await this.wecomApiService.uploadTempImage(appToken, buffer, 'card-cover.png');
+      return result.media_id;
+    }
   }
 
   /** `pages/a/index?x=1` → `pages/a/index.html?x=1`（企微客服消息的 pagepath 要求） */

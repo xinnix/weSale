@@ -1,9 +1,11 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as path from 'path';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { RedisService } from '../../../shared/services/redis.service';
 import { WechatKfApiService } from './kf-api.service';
 import { SalesLlmService } from './sales-llm.service';
+import { OrderService } from '../../product/services/order.service';
 
 /** sync_msg 返回的单条消息 */
 interface KfSyncMsg {
@@ -76,6 +78,7 @@ export class WechatKfService implements OnModuleDestroy {
     private readonly prisma: PrismaService,
     private readonly redisService: RedisService,
     private readonly salesLlmService: SalesLlmService,
+    private readonly orderService: OrderService,
   ) {}
 
   onModuleDestroy() {
@@ -506,18 +509,14 @@ export class WechatKfService implements OnModuleDestroy {
         );
       }
 
-      // 6. 发送支付链接
+      // 6. 逼单转化：AI 建单（PENDING）→ 发小程序卡片 → 顾客进小程序支付
       if (response.sendPaymentLink) {
-        try {
-          await this.kfApiService.sendLink(openKfId, externalUserId, {
-            title: '立即购买',
-            desc: '点击完成支付，享受专属优惠',
-            url: `https://wesale.example.com/pay?session=${session.id}`,
-          });
-          this.logger.log(`支付链接已发送: to=${externalUserId}`);
-        } catch (err: any) {
-          this.logger.error(`支付链接发送失败: ${err.message}`);
-        }
+        await this.sendOrderCard(
+          openKfId,
+          externalUserId,
+          session.id,
+          response.recommendedProductId,
+        );
       }
 
       // 7. 持久化 AI 回复（写入所有 AI 字段）
@@ -602,6 +601,89 @@ export class WechatKfService implements OnModuleDestroy {
       default:
         return JSON.stringify(body);
     }
+  }
+
+  /**
+   * 逼单转化：为推荐商品创建 PENDING 订单并发送小程序卡片。
+   * 顾客点卡片进小程序订单确认页完成 JSAPI 支付；
+   * 建单或发卡失败时降级发文本兜底话术。
+   */
+  private async sendOrderCard(
+    openKfId: string,
+    externalUserId: string,
+    sessionId: string,
+    recommendedProductId?: string,
+  ): Promise<void> {
+    try {
+      if (!recommendedProductId) {
+        await this.kfApiService.sendText(
+          openKfId,
+          externalUserId,
+          '请回复您感兴趣的商品名称，我来为您下单～',
+        );
+        return;
+      }
+
+      // 1. 建单（PENDING，关联会话，归因 Contact）
+      const contact = await this.prisma.contact.findUnique({ where: { openId: externalUserId } });
+      if (!contact) throw new Error(`未找到访客档案: ${externalUserId}`);
+
+      const order = await this.orderService.createOrder({
+        contactId: contact.id,
+        productId: recommendedProductId,
+        sessionId,
+      });
+
+      // 2. 发小程序卡片（封面 media_id 缓存 2.5 天，media_id 本身 3 天有效）
+      const appid = this.configService.get<string>('MINIAPP_APPID', '');
+      if (!appid) throw new Error('缺少 MINIAPP_APPID 配置');
+
+      const thumbMediaId = await this.resolveCardThumbMediaId();
+      await this.kfApiService.sendMiniProgram(openKfId, externalUserId, {
+        appid,
+        title: `「${order.product.name}」点击完成购买`,
+        thumbMediaId,
+        pagePath: `pages/order/confirm/index?orderNo=${order.orderNo}`,
+      });
+
+      this.logger.log(
+        `订单卡片已发送: orderNo=${order.orderNo}, productId=${recommendedProductId}, to=${externalUserId}`,
+      );
+    } catch (err: any) {
+      this.logger.error(`订单卡片发送失败，降级发文本: ${err.message}`);
+      try {
+        await this.kfApiService.sendText(
+          openKfId,
+          externalUserId,
+          '购买链接生成失败，请稍后重试或直接联系我们～',
+        );
+      } catch (sendErr: any) {
+        this.logger.error(`降级文本发送也失败: ${sendErr.message}`);
+      }
+    }
+  }
+
+  /** 小程序卡片默认封面 media_id（media/upload 通用接口，内部自动降级自建应用 token） */
+  private async resolveCardThumbMediaId(): Promise<string> {
+    const cacheKey = 'kf:card:thumb_media_id';
+    const CACHE_TTL_MS = 2.5 * 24 * 60 * 60 * 1000;
+
+    try {
+      const cached = await this.redisService.get<string>(cacheKey);
+      if (cached) return cached;
+    } catch {
+      // Redis 不可用则每次重新上传（成本可接受）
+    }
+
+    const coverPath = path.resolve(process.cwd(), 'assets/default-card-cover.png');
+    const mediaId = await this.kfApiService.uploadCardCover(coverPath);
+
+    try {
+      await this.redisService.set(cacheKey, mediaId, CACHE_TTL_MS);
+    } catch {
+      // 忽略缓存写入失败
+    }
+    return mediaId;
   }
 
   async generateJssdkSignature(url: string): Promise<{
