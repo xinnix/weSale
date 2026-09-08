@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { WecomModule } from '../wecom/module';
+import { ProductModule } from '../product/module';
 import { RedisService } from '../../shared/services/redis.service';
 import { WechatKfCryptoService } from './services/kf-crypto.service';
 import { WechatKfApiService } from './services/kf-api.service';
@@ -8,7 +9,7 @@ import { SalesLlmService } from './services/sales-llm.service';
 import { KfController } from './rest/kf.controller';
 
 @Module({
-  imports: [WecomModule],
+  imports: [WecomModule, ProductModule],
   controllers: [KfController],
   providers: [
     WechatKfCryptoService,

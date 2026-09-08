@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ProductService } from '../../product/services/product.service';
 
 // ─── 类型定义 ──────────────────────────────────────────────
 
@@ -38,11 +39,11 @@ const VALID_STATES = new Set(Object.keys(VALID_TRANSITIONS));
 const VALID_INTENT_LEVELS = new Set(['UNKNOWN', 'LOW', 'MEDIUM', 'HIGH', 'CLOSING']);
 
 // ─── Demo 产品（MVP） ─────────────────────────────────────
-
-const DEMO_PRODUCTS = `
-- SKU001: "智能净水器 Pro" - 六级过滤，直饮级净水，适用于家庭厨房。价格：1299元。特点：RO反渗透、智能TDS检测、滤芯寿命提醒。
-- SKU002: "便携式空气净化器" - 桌面级净化，静音运行，适用于办公室/卧室。价格：599元。特点：HEPA滤网、负离子模式、USB供电。
-- SKU003: "智能体脂秤" - 14项身体指标监测，家庭共享，适用于健康管理。价格：299元。特点：高精度传感器、APP数据同步、支持16人档案。
+// 已替换为动态产品加载，以下仅作 fallback
+const FALLBACK_PRODUCTS = `
+- SKU001: "智能净水器 Pro" - 六级过滤，直饮级净水。价格：1299元。
+- SKU002: "便携式空气净化器" - 桌面级净化，静音运行。价格：599元。
+- SKU003: "智能体脂秤" - 14项身体指标监测。价格：299元。
 `;
 
 // ─── Service ──────────────────────────────────────────────
@@ -51,7 +52,10 @@ const DEMO_PRODUCTS = `
 export class SalesLlmService {
   private readonly logger = new Logger(SalesLlmService.name);
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly productService: ProductService,
+  ) {}
 
   async generateReply(ctx: SalesLlmContext): Promise<SalesLlmResponse> {
     const apiUrl = this.configService.get<string>('LLM_API_URL');
@@ -63,7 +67,7 @@ export class SalesLlmService {
       throw new Error('LLM_API_URL 或 LLM_API_KEY 未配置');
     }
 
-    const systemPrompt = this.buildSystemPrompt(ctx);
+    const systemPrompt = await this.buildSystemPrompt(ctx);
     const messages = this.buildChatMessages(systemPrompt, ctx.messages, maxHistory);
 
     const controller = new AbortController();
@@ -103,14 +107,22 @@ export class SalesLlmService {
     }
   }
 
-  buildSystemPrompt(ctx: SalesLlmContext): string {
+  async buildSystemPrompt(ctx: SalesLlmContext): Promise<string> {
     const override = this.configService.get<string>('LLM_SYSTEM_PROMPT_OVERRIDE');
     if (override) return override;
+
+    let productsText: string;
+    try {
+      const products = await this.productService.findActive();
+      productsText = this.productService.formatForPrompt(products);
+    } catch {
+      productsText = FALLBACK_PRODUCTS;
+    }
 
     return `你是一个专业的 AI 销售助手，通过企业微信为客户提供产品咨询和购买引导。
 
 ## 可推荐的产品
-${DEMO_PRODUCTS}
+${productsText}
 
 ## 当前会话状态
 - 状态: ${ctx.sessionState}
