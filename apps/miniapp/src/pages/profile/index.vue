@@ -236,18 +236,14 @@ async function handleSave() {
             <text class="iconfont icon-camera avatar-camera-icon" />
           </view>
         </button>
-        <text class="avatar-tip">
-          点击更换头像
-        </text>
+        <text class="avatar-tip"> 点击更换头像 </text>
       </view>
 
       <!-- 表单字段 -->
       <view class="form-section">
         <!-- 昵称字段 -->
         <view class="form-item">
-          <text class="form-label">
-            昵称
-          </text>
+          <text class="form-label"> 昵称 </text>
           <input
             type="nickname"
             :value="userInfo.nickname"
@@ -256,21 +252,17 @@ async function handleSave() {
             placeholder-class="form-input-placeholder"
             :maxlength="20"
             @blur="onNicknameChange"
-          >
+          />
         </view>
 
         <!-- 手机号字段 -->
         <view class="form-item">
-          <text class="form-label">
-            手机号
-          </text>
+          <text class="form-label"> 手机号 </text>
           <view class="phone-field">
             <text v-if="userInfo.phone" class="phone-number">
               {{ userInfo.phone }}
             </text>
-            <text v-else class="phone-placeholder">
-              未绑定
-            </text>
+            <text v-else class="phone-placeholder"> 未绑定 </text>
             <button
               class="phone-btn"
               open-type="getPhoneNumber"
@@ -290,9 +282,7 @@ async function handleSave() {
         <view class="info-content">
           <text class="iconfont icon-shield info-icon" />
           <view class="info-text">
-            <text class="info-title">
-              账号安全说明
-            </text>
+            <text class="info-title"> 账号安全说明 </text>
             <text class="info-desc">
               为了保障社区安全，真实身份信息已加密处理。修改昵称不会影响您的会员权益发放。
             </text>
@@ -304,9 +294,7 @@ async function handleSave() {
     <!-- 底部保存按钮 -->
     <view class="footer">
       <view class="save-btn" :class="{ 'save-btn-disabled': loading }" @tap="handleSave">
-        <text class="save-btn-text">
-          保存修改
-        </text>
+        <text class="save-btn-text"> 保存修改 </text>
         <text class="iconfont icon-check save-btn-icon" />
       </view>
     </view>

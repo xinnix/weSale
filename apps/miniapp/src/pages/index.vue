@@ -60,31 +60,21 @@ function goToProfile() {
         </text>
       </view>
       <view v-else @click="goToLogin">
-        <text class="text-sm text-primary font-bold">
-          登录
-        </text>
+        <text class="text-sm text-primary font-bold"> 登录 </text>
       </view>
     </view>
 
     <!-- Welcome Section -->
     <view class="px-4 py-8">
       <view class="welcome-card rounded-xl p-6 shadow-sm">
-        <text class="mb-2 block text-2xl text-on-surface font-bold">
-          OpenCode Scaffold
-        </text>
-        <text class="block text-sm text-on-surface-variant">
-          全栈管理系统脚手架，开箱即用
-        </text>
+        <text class="mb-2 block text-2xl text-on-surface font-bold"> OpenCode Scaffold </text>
+        <text class="block text-sm text-on-surface-variant"> 全栈管理系统脚手架，开箱即用 </text>
         <view class="mt-4 flex gap-2">
           <view v-if="!isLoggedIn" class="rounded-lg bg-primary px-4 py-2" @click="goToLogin">
-            <text class="text-sm text-white font-bold">
-              开始使用
-            </text>
+            <text class="text-sm text-white font-bold"> 开始使用 </text>
           </view>
           <view v-if="isLoggedIn" class="rounded-lg bg-primary px-4 py-2" @click="goToProfile">
-            <text class="text-sm text-white font-bold">
-              个人中心
-            </text>
+            <text class="text-sm text-white font-bold"> 个人中心 </text>
           </view>
         </view>
       </view>
@@ -92,9 +82,7 @@ function goToProfile() {
 
     <!-- Tech Stack -->
     <view class="px-4">
-      <text class="mb-3 block text-lg text-on-surface font-bold">
-        技术栈
-      </text>
+      <text class="mb-3 block text-lg text-on-surface font-bold"> 技术栈 </text>
       <view class="grid grid-cols-2 gap-3">
         <view
           v-for="tech in [

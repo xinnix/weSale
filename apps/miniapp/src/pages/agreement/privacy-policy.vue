@@ -13,9 +13,7 @@ definePage({
 <template>
   <view class="privacy-container">
     <view class="content">
-      <text class="title">
-        隐私政策
-      </text>
+      <text class="title"> 隐私政策 </text>
 
       <view class="intro">
         <text class="intro-text">
@@ -27,9 +25,7 @@ definePage({
       </view>
 
       <view class="section">
-        <text class="section-title">
-          一、我们收集的信息
-        </text>
+        <text class="section-title"> 一、我们收集的信息 </text>
         <text class="paragraph">
           为了向您提供更好、更优、更个性化的服务，我们会收集如下信息：
         </text>
@@ -48,33 +44,17 @@ definePage({
       </view>
 
       <view class="section">
-        <text class="section-title">
-          二、我们如何使用收集的信息
-        </text>
-        <text class="paragraph">
-          我们收集的信息将用于以下目的：
-        </text>
-        <text class="paragraph">
-          2.1 为您提供优惠券发放、核销等核心服务功能。
-        </text>
-        <text class="paragraph">
-          2.2 识别您身份，防止欺诈行为，保障账户安全。
-        </text>
-        <text class="paragraph">
-          2.3 向您发送服务通知、营销推广信息（您可选择关闭）。
-        </text>
-        <text class="paragraph">
-          2.4 改进我们的产品和服务，提升用户体验。
-        </text>
-        <text class="paragraph">
-          2.5 进行数据分析、统计，优化运营策略。
-        </text>
+        <text class="section-title"> 二、我们如何使用收集的信息 </text>
+        <text class="paragraph"> 我们收集的信息将用于以下目的： </text>
+        <text class="paragraph"> 2.1 为您提供优惠券发放、核销等核心服务功能。 </text>
+        <text class="paragraph"> 2.2 识别您身份，防止欺诈行为，保障账户安全。 </text>
+        <text class="paragraph"> 2.3 向您发送服务通知、营销推广信息（您可选择关闭）。 </text>
+        <text class="paragraph"> 2.4 改进我们的产品和服务，提升用户体验。 </text>
+        <text class="paragraph"> 2.5 进行数据分析、统计，优化运营策略。 </text>
       </view>
 
       <view class="section">
-        <text class="section-title">
-          三、信息存储与保护
-        </text>
+        <text class="section-title"> 三、信息存储与保护 </text>
         <text class="paragraph">
           3.1 信息存储：您的个人信息将存储于中华人民共和国境内的服务器。
         </text>
@@ -89,18 +69,10 @@ definePage({
       </view>
 
       <view class="section">
-        <text class="section-title">
-          四、信息共享
-        </text>
-        <text class="paragraph">
-          我们不会向第三方共享您的个人信息，除非：
-        </text>
-        <text class="paragraph">
-          4.1 获得您的明确同意。
-        </text>
-        <text class="paragraph">
-          4.2 根据法律法规规定或行政、司法机关依法要求。
-        </text>
+        <text class="section-title"> 四、信息共享 </text>
+        <text class="paragraph"> 我们不会向第三方共享您的个人信息，除非： </text>
+        <text class="paragraph"> 4.1 获得您的明确同意。 </text>
+        <text class="paragraph"> 4.2 根据法律法规规定或行政、司法机关依法要求。 </text>
         <text class="paragraph">
           4.3
           与授权合作伙伴共享：我们可能会与商户等合作伙伴共享必要的用户信息，以完成优惠券发放和核销服务。
@@ -108,33 +80,21 @@ definePage({
       </view>
 
       <view class="section">
-        <text class="section-title">
-          五、您的权利
-        </text>
-        <text class="paragraph">
-          5.1 访问权：您有权访问您的个人信息，我们会在您请求时提供。
-        </text>
-        <text class="paragraph">
-          5.2 更正权：您有权要求我们更正不准确或不完整的个人信息。
-        </text>
+        <text class="section-title"> 五、您的权利 </text>
+        <text class="paragraph"> 5.1 访问权：您有权访问您的个人信息，我们会在您请求时提供。 </text>
+        <text class="paragraph"> 5.2 更正权：您有权要求我们更正不准确或不完整的个人信息。 </text>
         <text class="paragraph">
           5.3 删除权：您有权要求我们删除您的个人信息，我们会在法律法规允许的范围内尽快处理。
         </text>
         <text class="paragraph">
           5.4 注销权：您可以申请注销账号，注销后我们将停止为您提供服务并删除您的个人信息。
         </text>
-        <text class="paragraph">
-          5.5 撤回同意权：您可以撤回之前给予我们的授权同意。
-        </text>
+        <text class="paragraph"> 5.5 撤回同意权：您可以撤回之前给予我们的授权同意。 </text>
       </view>
 
       <view class="section">
-        <text class="section-title">
-          六、未成年人保护
-        </text>
-        <text class="paragraph">
-          6.1 我们高度重视未成年人的个人信息保护。
-        </text>
+        <text class="section-title"> 六、未成年人保护 </text>
+        <text class="paragraph"> 6.1 我们高度重视未成年人的个人信息保护。 </text>
         <text class="paragraph">
           6.2 如您为未成年人，请在监护人指导下阅读本政策，并在取得监护人同意后使用我们的服务。
         </text>
@@ -145,12 +105,8 @@ definePage({
       </view>
 
       <view class="section">
-        <text class="section-title">
-          七、本政策的更新
-        </text>
-        <text class="paragraph">
-          7.1 我们可能适时修订本政策内容。
-        </text>
+        <text class="section-title"> 七、本政策的更新 </text>
+        <text class="paragraph"> 7.1 我们可能适时修订本政策内容。 </text>
         <text class="paragraph">
           7.2 如该修订变更您的权利义务，我们会通过页面公告、弹窗提示等方式通知您。
         </text>
@@ -161,27 +117,17 @@ definePage({
       </view>
 
       <view class="section">
-        <text class="section-title">
-          八、联系我们
-        </text>
+        <text class="section-title"> 八、联系我们 </text>
         <text class="paragraph">
           如您对本隐私政策有任何疑问、意见或建议，可通过以下方式与我们联系：
         </text>
-        <text class="paragraph">
-          客服邮箱：support@example.com
-        </text>
-        <text class="paragraph">
-          我们将在15个工作日内回复您的请求。
-        </text>
+        <text class="paragraph"> 客服邮箱：support@example.com </text>
+        <text class="paragraph"> 我们将在15个工作日内回复您的请求。 </text>
       </view>
 
       <view class="footer">
-        <text class="update-time">
-          本政策最后更新时间：2024年4月
-        </text>
-        <text class="effective-time">
-          生效时间：2024年4月
-        </text>
+        <text class="update-time"> 本政策最后更新时间：2024年4月 </text>
+        <text class="effective-time"> 生效时间：2024年4月 </text>
       </view>
     </view>
   </view>

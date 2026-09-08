@@ -127,42 +127,26 @@ function navigateToPrivacyPolicy() {
       <template v-if="step === 1">
         <view class="login-header">
           <image class="logo-image" src="/static/logo.png" mode="aspectFit" />
-          <text class="title text-on-surface font-extrabold">
-            欢迎回来
-          </text>
-          <text class="subtitle text-on-surface-variant">
-            登录开启精彩体验
-          </text>
+          <text class="title text-on-surface font-extrabold"> 欢迎回来 </text>
+          <text class="subtitle text-on-surface-variant"> 登录开启精彩体验 </text>
         </view>
 
         <view class="wechat-login-btn" :class="{ disabled: loading }" @tap="onLoginTap">
           <view class="btn-content">
             <text class="btn-icon iconfont icon-weixin" />
-            <text class="btn-text">
-              微信一键登录
-            </text>
+            <text class="btn-text"> 微信一键登录 </text>
           </view>
         </view>
 
         <view class="agreement" @tap.stop="agreed = !agreed">
           <view class="checkbox" :class="{ checked: agreed }">
-            <text v-if="agreed" class="check-icon">
-              ✓
-            </text>
+            <text v-if="agreed" class="check-icon"> ✓ </text>
           </view>
           <view class="agreement-text">
-            <text class="tip">
-              我已阅读并同意
-            </text>
-            <text class="link" @tap.stop="navigateToUserAgreement">
-              《用户协议》
-            </text>
-            <text class="tip">
-              和
-            </text>
-            <text class="link" @tap.stop="navigateToPrivacyPolicy">
-              《隐私政策》
-            </text>
+            <text class="tip"> 我已阅读并同意 </text>
+            <text class="link" @tap.stop="navigateToUserAgreement"> 《用户协议》 </text>
+            <text class="tip"> 和 </text>
+            <text class="link" @tap.stop="navigateToPrivacyPolicy"> 《隐私政策》 </text>
           </view>
         </view>
       </template>
@@ -171,16 +155,10 @@ function navigateToPrivacyPolicy() {
       <template v-if="step === 2">
         <view class="login-header">
           <view class="phone-icon-wrap">
-            <text class="phone-icon">
-              📱
-            </text>
+            <text class="phone-icon"> 📱 </text>
           </view>
-          <text class="title text-on-surface font-extrabold">
-            绑定手机号
-          </text>
-          <text class="subtitle text-on-surface-variant">
-            绑定手机号以获得更好的服务体验
-          </text>
+          <text class="title text-on-surface font-extrabold"> 绑定手机号 </text>
+          <text class="subtitle text-on-surface-variant"> 绑定手机号以获得更好的服务体验 </text>
         </view>
 
         <button
@@ -190,16 +168,12 @@ function navigateToPrivacyPolicy() {
           @getphonenumber="handleGetPhoneNumber"
         >
           <view class="btn-content">
-            <text class="btn-text">
-              授权手机号
-            </text>
+            <text class="btn-text"> 授权手机号 </text>
           </view>
         </button>
 
         <view class="skip-btn" @tap="skipPhoneNumber">
-          <text class="skip-text">
-            暂不绑定，先去看看
-          </text>
+          <text class="skip-text"> 暂不绑定，先去看看 </text>
         </view>
       </template>
     </view>

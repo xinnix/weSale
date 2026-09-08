@@ -126,12 +126,8 @@ async function handleSend() {
     <!-- Messages -->
     <scroll-view class="messages" scroll-y :scroll-into-view="scrollIntoView" scroll-with-animation>
       <view v-if="messages.length === 0" class="empty">
-        <text class="empty-icon">
-          🤖
-        </text>
-        <text class="empty-text">
-          发送消息开始对话
-        </text>
+        <text class="empty-icon"> 🤖 </text>
+        <text class="empty-text"> 发送消息开始对话 </text>
       </view>
 
       <view v-for="msg in messages" :id="msg.id" :key="msg.id" class="message-row">
@@ -144,14 +140,10 @@ async function handleSend() {
 
         <!-- Assistant message -->
         <view v-else class="msg msg-assistant">
-          <view class="msg-avatar">
-            🤖
-          </view>
+          <view class="msg-avatar"> 🤖 </view>
           <view class="msg-content">
             <view v-if="msg.thought" class="msg-thought">
-              <text v-if="msg.tool" class="thought-tool">
-                🔧 {{ msg.tool }}
-              </text>
+              <text v-if="msg.tool" class="thought-tool"> 🔧 {{ msg.tool }} </text>
               <text>{{ msg.thought }}</text>
             </view>
             <view class="msg-bubble msg-bubble-assistant">
@@ -173,7 +165,7 @@ async function handleSend() {
         :disabled="isStreaming"
         confirm-type="send"
         @confirm="handleSend"
-      >
+      />
       <button class="send-btn" :disabled="!query.trim() || isStreaming" @tap="handleSend">
         {{ isStreaming ? '...' : '发送' }}
       </button>

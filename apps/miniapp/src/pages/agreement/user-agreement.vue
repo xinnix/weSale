@@ -13,14 +13,10 @@ definePage({
 <template>
   <view class="agreement-container">
     <view class="content">
-      <text class="title">
-        用户服务协议
-      </text>
+      <text class="title"> 用户服务协议 </text>
 
       <view class="section">
-        <text class="section-title">
-          一、协议的接受与修改
-        </text>
+        <text class="section-title"> 一、协议的接受与修改 </text>
         <text class="paragraph">
           1.1
           本协议是用户（以下简称"您"）与本平台（以下简称"我们"）之间关于使用本平台服务所订立的协议。
@@ -35,9 +31,7 @@ definePage({
       </view>
 
       <view class="section">
-        <text class="section-title">
-          二、账号注册与使用
-        </text>
+        <text class="section-title"> 二、账号注册与使用 </text>
         <text class="paragraph">
           2.1 您需要通过微信授权方式注册账号，账号注册成功后，您将成为本平台的正式用户。
         </text>
@@ -51,39 +45,25 @@ definePage({
       </view>
 
       <view class="section">
-        <text class="section-title">
-          三、用户行为规范
-        </text>
+        <text class="section-title"> 三、用户行为规范 </text>
         <text class="paragraph">
           3.1 您在使用本平台服务时，必须遵守中华人民共和国相关法律法规。
         </text>
-        <text class="paragraph">
-          3.2 您不得利用本平台从事以下活动：
-        </text>
-        <text class="paragraph">
-          (1) 发布、传送、传播、储存违反国家法律法规的内容；
-        </text>
+        <text class="paragraph"> 3.2 您不得利用本平台从事以下活动： </text>
+        <text class="paragraph"> (1) 发布、传送、传播、储存违反国家法律法规的内容； </text>
         <text class="paragraph">
           (2) 发布、传送、传播、储存侵害他人名誉权、肖像权、知识产权、商业秘密等合法权利的内容；
         </text>
         <text class="paragraph">
           (3) 发布、传送、传播、储存涉及他人隐私、个人信息或资料的内容；
         </text>
-        <text class="paragraph">
-          (4) 发布、传送、传播骚扰、广告信息及垃圾信息；
-        </text>
-        <text class="paragraph">
-          (5) 其他违反法律法规、政策及公序良俗、社会公德等的行为。
-        </text>
+        <text class="paragraph"> (4) 发布、传送、传播骚扰、广告信息及垃圾信息； </text>
+        <text class="paragraph"> (5) 其他违反法律法规、政策及公序良俗、社会公德等的行为。 </text>
       </view>
 
       <view class="section">
-        <text class="section-title">
-          四、服务内容
-        </text>
-        <text class="paragraph">
-          4.1 本平台为用户提供优惠券发放、核销等相关服务。
-        </text>
+        <text class="section-title"> 四、服务内容 </text>
+        <text class="paragraph"> 4.1 本平台为用户提供优惠券发放、核销等相关服务。 </text>
         <text class="paragraph">
           4.2 我们有权根据业务发展需要调整、暂停、终止部分或全部服务，并提前公告。
         </text>
@@ -93,9 +73,7 @@ definePage({
       </view>
 
       <view class="section">
-        <text class="section-title">
-          五、知识产权
-        </text>
+        <text class="section-title"> 五、知识产权 </text>
         <text class="paragraph">
           5.1
           本平台的所有内容，包括但不限于文字、图片、音频、视频、软件、程序、版面设计等的知识产权归我们所有。
@@ -106,9 +84,7 @@ definePage({
       </view>
 
       <view class="section">
-        <text class="section-title">
-          六、免责声明
-        </text>
+        <text class="section-title"> 六、免责声明 </text>
         <text class="paragraph">
           6.1
           您理解并同意，本平台仅提供信息发布及优惠券发放平台，不对用户发布的任何信息内容的真实性、合法性负责。
@@ -119,21 +95,15 @@ definePage({
       </view>
 
       <view class="section">
-        <text class="section-title">
-          七、协议终止
-        </text>
-        <text class="paragraph">
-          7.1 您有权随时申请注销账号，注销后本协议终止。
-        </text>
+        <text class="section-title"> 七、协议终止 </text>
+        <text class="paragraph"> 7.1 您有权随时申请注销账号，注销后本协议终止。 </text>
         <text class="paragraph">
           7.2 如您违反本协议约定，我们有权终止向您提供服务并注销您的账号。
         </text>
       </view>
 
       <view class="section">
-        <text class="section-title">
-          八、争议解决
-        </text>
+        <text class="section-title"> 八、争议解决 </text>
         <text class="paragraph">
           8.1 本协议的签订、履行、解释及争议解决均适用中华人民共和国法律。
         </text>
@@ -144,9 +114,7 @@ definePage({
       </view>
 
       <view class="footer">
-        <text class="update-time">
-          本协议最后更新时间：2024年4月
-        </text>
+        <text class="update-time"> 本协议最后更新时间：2024年4月 </text>
       </view>
     </view>
   </view>

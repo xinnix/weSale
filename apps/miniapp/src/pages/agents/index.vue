@@ -44,9 +44,7 @@ function openChat(agent: Agent) {
 
     <view v-else class="agent-list">
       <view v-for="agent in agents" :key="agent.id" class="agent-card" @tap="openChat(agent)">
-        <view class="agent-icon">
-          🤖
-        </view>
+        <view class="agent-icon"> 🤖 </view>
         <view class="agent-info">
           <text class="agent-name">
             {{ agent.name }}
@@ -55,9 +53,7 @@ function openChat(agent: Agent) {
             {{ agent.description }}
           </text>
         </view>
-        <view class="agent-arrow">
-          ›
-        </view>
+        <view class="agent-arrow"> › </view>
       </view>
     </view>
   </view>

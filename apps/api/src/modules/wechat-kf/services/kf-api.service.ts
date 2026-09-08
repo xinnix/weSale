@@ -74,6 +74,47 @@ export class WechatKfApiService {
     });
   }
 
+  /**
+   * 发送小程序卡片消息
+   * 官方文档要求 pagepath 以 .html 为后缀，否则在微信中打开提示找不到页面
+   */
+  async sendMiniProgram(
+    openKfId: string,
+    externalUserId: string,
+    miniProgram: {
+      appid: string;
+      title: string;
+      thumbMediaId: string;
+      pagePath: string;
+    },
+  ): Promise<any> {
+    return this.sendKfMessage({
+      touser: externalUserId,
+      open_kfid: openKfId,
+      msgtype: 'miniprogram',
+      miniprogram: {
+        appid: miniProgram.appid,
+        title: miniProgram.title,
+        thumb_media_id: miniProgram.thumbMediaId,
+        pagepath: this.ensureHtmlSuffix(miniProgram.pagePath),
+      },
+    });
+  }
+
+  /** 上传临时图片素材（供小程序卡片封面等场景），media_id 3 天有效 */
+  async uploadKfTempImage(buffer: Buffer, filename = 'cover.png'): Promise<string> {
+    const accessToken = await this.getAccessToken();
+    const result = await this.wecomApiService.uploadTempImage(accessToken, buffer, filename);
+    return result.media_id;
+  }
+
+  /** `pages/a/index?x=1` → `pages/a/index.html?x=1`（企微客服消息的 pagepath 要求） */
+  private ensureHtmlSuffix(path: string): string {
+    const [pathname, query] = path.split('?');
+    const withSuffix = pathname.endsWith('.html') ? pathname : `${pathname}.html`;
+    return query ? `${withSuffix}?${query}` : withSuffix;
+  }
+
   async syncKfMessage(
     openKfId: string,
     cursor?: string,

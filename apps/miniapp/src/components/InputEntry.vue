@@ -29,7 +29,7 @@ function go() {
         autocomplete="off"
         mr-0
         w-full
-      >
+      />
     </view>
     <view>
       <button

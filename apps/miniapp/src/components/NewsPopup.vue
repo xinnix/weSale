@@ -77,16 +77,12 @@ const contentSummary = computed(() => {
 
         <!-- 操作按钮 -->
         <view class="popup-actions">
-          <button class="action-button primary" @click="handleViewDetail">
-            查看详情
-          </button>
+          <button class="action-button primary" @click="handleViewDetail">查看详情</button>
         </view>
 
         <!-- 关闭按钮 -->
         <view class="close-button" @click="handleClose">
-          <text class="close-icon">
-            ✕
-          </text>
+          <text class="close-icon"> ✕ </text>
         </view>
       </view>
     </view>
