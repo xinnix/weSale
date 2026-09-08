@@ -120,6 +120,7 @@ export const PERMISSIONS = {
   ORDER: {
     READ: 'order:read',
     REFUND: 'order:refund',
+    SHIP: 'order:ship',
   },
 } as const;
 
@@ -540,6 +541,8 @@ export const OrderStatusSchema = z.enum([
   'CANCELLED',
 ]);
 
+export const OrderSourceSchema = z.enum(['KF_SESSION', 'MINIAPP', 'ADMIN_MANUAL']);
+
 export const CreateOrderSchema = z.object({
   contactId: z.string().min(1, '客户ID不能为空'),
   productId: z.string().min(1, '产品ID不能为空'),
@@ -548,8 +551,38 @@ export const CreateOrderSchema = z.object({
   metadata: z.record(z.string(), z.any()).optional(),
 });
 
+// 小程序用户下单（userId 由服务端从 JWT 注入，不收自客户端）
+export const CreateMiniappOrderSchema = z.object({
+  productId: z.string().min(1, '产品ID不能为空'),
+  quantity: z.number().int().min(1).optional().default(1),
+  addressId: z.string().min(1, '请选择收货地址'),
+});
+
+export const ShipOrderSchema = z.object({
+  shipCompany: z.string().min(1, '物流公司不能为空'),
+  shipNo: z.string().min(1, '物流单号不能为空'),
+});
+
 export const RefundOrderSchema = z.object({
   refundReason: z.string().min(1, '退款原因不能为空'),
+});
+
+// ============================================
+// Address Schemas（小程序收货地址）
+// ============================================
+
+export const CreateAddressSchema = z.object({
+  receiver: z.string().min(1, '收货人不能为空').max(50),
+  phone: z.string().regex(/^1[3-9]\d{9}$/, '手机号格式不正确'),
+  province: z.string().min(1, '省份不能为空'),
+  city: z.string().min(1, '城市不能为空'),
+  district: z.string().min(1, '区县不能为空'),
+  detail: z.string().min(1, '详细地址不能为空').max(255),
+  isDefault: z.boolean().optional().default(false),
+});
+
+export const UpdateAddressSchema = CreateAddressSchema.partial().extend({
+  isDefault: z.boolean().optional(),
 });
 
 // ============================================
@@ -559,7 +592,12 @@ export const RefundOrderSchema = z.object({
 export type ProductStatus = z.infer<typeof ProductStatusSchema>;
 export type BillingCycle = z.infer<typeof BillingCycleSchema>;
 export type OrderStatus = z.infer<typeof OrderStatusSchema>;
+export type OrderSource = z.infer<typeof OrderSourceSchema>;
 export type CreateProductInput = z.infer<typeof CreateProductSchema>;
 export type UpdateProductInput = z.infer<typeof UpdateProductSchema>;
 export type CreateOrderInput = z.infer<typeof CreateOrderSchema>;
+export type CreateMiniappOrderInput = z.infer<typeof CreateMiniappOrderSchema>;
+export type ShipOrderInput = z.infer<typeof ShipOrderSchema>;
 export type RefundOrderInput = z.infer<typeof RefundOrderSchema>;
+export type CreateAddressInput = z.infer<typeof CreateAddressSchema>;
+export type UpdateAddressInput = z.infer<typeof UpdateAddressSchema>;

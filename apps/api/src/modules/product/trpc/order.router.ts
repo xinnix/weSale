@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { CreateOrderSchema, RefundOrderSchema } from '@opencode/shared';
+import { CreateOrderSchema, RefundOrderSchema, ShipOrderSchema } from '@opencode/shared';
 import { createCrudRouterWithCustom } from '../../../trpc/trpc.helper';
 import { permissionProcedure } from '../../../trpc/trpc';
+import { getOrderService, getWechatPayService } from '../../../trpc/trpc';
 import { NotFoundBusinessException, ErrorCodes } from '../../../core/exceptions';
 
 const orderGetManySchema = z
@@ -72,40 +73,32 @@ export const orderRouter = createCrudRouterWithCustom(
     createOrder: permissionProcedure('order', 'read')
       .input(CreateOrderSchema)
       .mutation(async ({ ctx, input }) => {
-        const product = await ctx.prisma.product.findUnique({
-          where: { id: input.productId, deletedAt: null },
+        return getOrderService().createOrder({
+          contactId: input.contactId,
+          productId: input.productId,
+          sessionId: input.sessionId,
+          quantity: input.quantity,
+          metadata: input.metadata,
+          userId: ctx.user?.id,
         });
-        if (!product)
-          throw new NotFoundBusinessException(
-            'Product',
-            input.productId,
-            ErrorCodes.PRODUCT_NOT_FOUND,
-          );
+      }),
 
-        const date = new Date();
-        const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
-        const todayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-        const count = await ctx.prisma.order.count({
-          where: { createdAt: { gte: todayStart } },
-        });
-        const orderNo = `WS${dateStr}${String(count + 1).padStart(4, '0')}`;
+    shipOrder: permissionProcedure('order', 'ship')
+      .input(z.object({ id: z.string(), data: ShipOrderSchema }))
+      .mutation(async ({ ctx, input }) => {
+        const { id, data } = input;
+        const order = await ctx.prisma.order.findUnique({ where: { id } });
+        if (!order) throw new NotFoundBusinessException('Order', id, ErrorCodes.ORDER_NOT_FOUND);
+        if (order.status !== 'PAID')
+          throw new NotFoundBusinessException('Order', id, ErrorCodes.ORDER_INVALID_STATUS);
 
-        const quantity = input.quantity ?? 1;
-
-        return ctx.prisma.order.create({
+        return ctx.prisma.order.update({
+          where: { id },
           data: {
-            orderNo,
-            contactId: input.contactId,
-            productId: input.productId,
-            sessionId: input.sessionId,
-            quantity,
-            unitPriceFen: product.priceFen,
-            totalAmountFen: product.priceFen * quantity,
-            status: 'PENDING',
-            metadata: input.metadata,
-            createdById: ctx.user?.id,
+            status: 'COMPLETED',
+            shipCompany: data.shipCompany,
+            shipNo: data.shipNo,
           },
-          include: { product: true, contact: true },
         });
       }),
 
@@ -118,14 +111,37 @@ export const orderRouter = createCrudRouterWithCustom(
         if (order.status !== 'PAID')
           throw new NotFoundBusinessException('Order', id, ErrorCodes.ORDER_INVALID_STATUS);
 
-        return ctx.prisma.order.update({
-          where: { id },
-          data: {
-            status: 'REFUNDING',
-            refundAmountFen: order.totalAmountFen,
-            refundReason: data.refundReason,
-          },
-        });
+        // 先落 REFUNDING 状态，再调微信退款 API；API 失败则回滚状态
+        const refunding = await getOrderService().markRefunded(
+          id,
+          order.totalAmountFen,
+          data.refundReason,
+        );
+
+        const wechatPay = getWechatPayService();
+        if (!wechatPay) {
+          throw new Error('微信支付未配置，无法发起退款');
+        }
+
+        try {
+          const refundNo = `WSR${order.orderNo.slice(2)}`;
+          await wechatPay.refund({
+            orderNo: order.orderNo,
+            refundNo,
+            totalAmount: order.totalAmountFen, // 分
+            refundAmount: order.totalAmountFen, // 全额退款，单位：分
+            reason: data.refundReason,
+          });
+        } catch (err: any) {
+          // 微信退款失败，回滚 REFUNDING 状态
+          await ctx.prisma.order.update({
+            where: { id },
+            data: { status: 'PAID', refundAmountFen: null, refundReason: null },
+          });
+          throw new Error(`微信退款失败: ${err.message}`);
+        }
+
+        return refunding;
       }),
 
     getStats: permissionProcedure('order', 'read').query(async ({ ctx }) => {

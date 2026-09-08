@@ -16,7 +16,7 @@ import { Wechatpay, Formatter, Aes, Rsa } from 'wechatpay-axios-plugin';
  * - 查询订单状态
  *
  * 配置要求：
- * - WX_PAY_APP_ID: 小程序 AppID
+ * - WX_PAY_APP_ID: 小程序 AppID（必须与商家小程序 appid 一致，JSAPI 支付的 openid 才有效）
  * - WX_PAY_MCH_ID: 商户号
  * - WX_PAY_API_KEY: API v3 密钥
  * - WX_PAY_SERIAL_NO: 商户 API 证书序列号
@@ -151,6 +151,7 @@ export class WechatPayService implements OnModuleInit {
   /**
    * JSAPI 下单（小程序支付）
    *
+   * @param params.amount 金额，单位：分（与 Order.totalAmountFen 对齐）
    * @returns prepay_id
    */
   async createOrder(params: {
@@ -165,7 +166,7 @@ export class WechatPayService implements OnModuleInit {
     const { orderId, orderNo, amount, description, openid } = params;
 
     this.logger.log(
-      `创建支付订单: ${orderNo}, 金额: ${amount}元, openid: ${openid.slice(0, 8)}...`,
+      `创建支付订单: ${orderNo}, 金额: ${amount}分, openid: ${openid.slice(0, 8)}...`,
     );
 
     try {
@@ -176,7 +177,7 @@ export class WechatPayService implements OnModuleInit {
         out_trade_no: orderNo,
         notify_url: this.notifyUrl,
         amount: {
-          total: Math.round(amount * 100), // 微信支付金额单位为分
+          total: amount, // 微信支付金额单位为分，调用方传入的已是分
           currency: 'CNY',
         },
         payer: {
@@ -372,6 +373,9 @@ export class WechatPayService implements OnModuleInit {
 
   /**
    * 发起退款
+   *
+   * @param params.totalAmount 原订单金额，单位：分
+   * @param params.refundAmount 退款金额，单位：分
    */
   async refund(params: {
     orderNo: string;
@@ -384,15 +388,15 @@ export class WechatPayService implements OnModuleInit {
 
     const { orderNo, refundNo, totalAmount, refundAmount, reason } = params;
 
-    this.logger.log(`发起退款: 订单 ${orderNo}, 退款 ${refundAmount}元, 原因: ${reason}`);
+    this.logger.log(`发起退款: 订单 ${orderNo}, 退款 ${refundAmount}分, 原因: ${reason}`);
 
     try {
       const { data } = await this.wxpay!.v3.refund.domestic.refunds.post({
         out_trade_no: orderNo,
         out_refund_no: refundNo,
         amount: {
-          refund: Math.round(refundAmount * 100),
-          total: Math.round(totalAmount * 100),
+          refund: refundAmount,
+          total: totalAmount,
           currency: 'CNY',
         },
         reason: reason || '用户申请退款',

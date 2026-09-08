@@ -8,11 +8,15 @@ import { AllExceptionsFilter } from './core/filters/http-exception.filter';
 
 import { PrismaService } from './prisma/prisma.service';
 import { FileStorageService } from './shared/services/file-storage.service';
+import { OrderService } from './modules/product/services/order.service';
+import { WechatPayService } from './modules/payment/services/wechat-pay.service';
 import { appRouter } from './trpc/app.router';
 import {
   createContext,
   setPrismaService,
   setFileStorageService,
+  setOrderService,
+  setWechatPayService,
   setAppInstance,
 } from './trpc/trpc';
 import * as trpcExpress from '@trpc/server/adapters/express';
@@ -101,6 +105,10 @@ async function bootstrap() {
 
   const fileStorageService = app.get(FileStorageService);
   setFileStorageService(fileStorageService);
+
+  // tRPC 层使用的业务服务注册（修复模块级 new 绕过 DI 的问题）
+  setOrderService(app.get(OrderService));
+  setWechatPayService(app.get(WechatPayService));
 
   setAppInstance(app);
 

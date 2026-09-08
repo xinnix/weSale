@@ -2,6 +2,8 @@ import { initTRPC, TRPCError } from '@trpc/server';
 import { ZodError } from 'zod';
 import { PrismaService } from '../prisma/prisma.service';
 import { FileStorageService } from '../shared/services/file-storage.service';
+import { OrderService } from '../modules/product/services/order.service';
+import { WechatPayService } from '../modules/payment/services/wechat-pay.service';
 import jwt from 'jsonwebtoken';
 import { INestApplication } from '@nestjs/common';
 import { BusinessException } from '../core/exceptions';
@@ -10,6 +12,8 @@ import { businessExceptionToTRPCError } from '../core/middleware/trpc-error-form
 // Global service references
 let prismaServiceInstance: PrismaService | null = null;
 let fileStorageServiceInstance: FileStorageService | null = null;
+let orderServiceInstance: OrderService | null = null;
+let wechatPayServiceInstance: WechatPayService | null = null;
 let appInstance: INestApplication | null = null;
 
 export const setPrismaService = (prisma: PrismaService) => {
@@ -18,6 +22,25 @@ export const setPrismaService = (prisma: PrismaService) => {
 
 export const setFileStorageService = (fileStorage: FileStorageService) => {
   fileStorageServiceInstance = fileStorage;
+};
+
+export const setOrderService = (orderService: OrderService) => {
+  orderServiceInstance = orderService;
+};
+
+export const setWechatPayService = (wechatPayService: WechatPayService) => {
+  wechatPayServiceInstance = wechatPayService;
+};
+
+export const getOrderService = (): OrderService => {
+  if (!orderServiceInstance) {
+    throw new Error('OrderService 未注册（应在 main.ts 启动时通过 setOrderService 注入）');
+  }
+  return orderServiceInstance;
+};
+
+export const getWechatPayService = (): WechatPayService | null => {
+  return wechatPayServiceInstance;
 };
 
 export const setAppInstance = (app: INestApplication) => {

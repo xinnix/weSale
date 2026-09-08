@@ -46,9 +46,9 @@ model Admin {
 // ============================================
 model User {
   id           String  @id @default(cuid())
-  username     String  @unique
+  username     String? @unique // 可空：微信顾客静默注册时无用户名
   email        String? // 可选字段（微信用户不需要）
-  passwordHash String
+  passwordHash String? // 可空：微信登录用户无密码
 
   // 微信相关字段
   openid     String? @unique // 微信用户唯一标识
@@ -66,6 +66,8 @@ model User {
 
   // 关联
   refreshTokens UserRefreshToken[]
+  addresses     Address[]
+  orders        Order[]
 
   @@index([openid])
   @@index([email])
@@ -374,6 +376,12 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum OrderSource {
+  KF_SESSION // 微信客服会话（AI 逼单建单）
+  MINIAPP // 小程序商城自主下单
+  ADMIN_MANUAL // 管理后台手工创建
+}
+
 // ============================================
 // 访客档案 (Contact)
 // ============================================
@@ -522,13 +530,19 @@ model Product {
 model Order {
   id                String      @id @default(cuid())
   orderNo           String      @unique @map("order_no")
-  contactId         String      @map("contact_id")
+  source            OrderSource @default(KF_SESSION)
+  contactId         String?     @map("contact_id") // 可空：小程序自主下单无客服 Contact
+  userId            String?     @map("user_id") // 小程序下单用户
   productId         String      @map("product_id")
   sessionId         String?     @map("session_id")
   quantity          Int         @default(1)
   unitPriceFen      Int         @map("unit_price_fen")
   totalAmountFen    Int         @map("total_amount_fen")
   status            OrderStatus @default(PENDING)
+  addressSnapshot   Json? // 下单时收货地址快照（防地址后续被改）
+  shipCompany       String?     @map("ship_company") // 物流公司（SHIPPED 后填写）
+  shipNo            String?     @map("ship_no") // 物流单号
+  expireAt          DateTime?   @map("expire_at") // 支付截止时间（超时关单用）
   paidAt            DateTime?   @map("paid_at")
   paidTransactionId String?     @map("paid_transaction_id")
   refundedAt        DateTime?   @map("refunded_at")
@@ -539,16 +553,41 @@ model Order {
   createdAt         DateTime    @default(now()) @map("created_at")
   updatedAt         DateTime    @updatedAt @map("updated_at")
 
-  contact Contact              @relation(fields: [contactId], references: [id])
-  product Product              @relation(fields: [productId], references: [id])
+  contact  Contact?             @relation(fields: [contactId], references: [id])
+  user     User?                @relation(fields: [userId], references: [id])
+  product  Product              @relation(fields: [productId], references: [id])
   session  ConversationSession? @relation(fields: [sessionId], references: [id])
 
   @@index([contactId])
+  @@index([userId])
   @@index([productId])
   @@index([status])
   @@index([orderNo])
   @@index([createdAt])
   @@map("orders")
+}
+
+// ============================================
+// 收货地址 (Address) —— 小程序商城实物商品
+// ============================================
+model Address {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  receiver  String
+  phone     String
+  province  String
+  city      String
+  district  String
+  detail    String    @db.VarChar(255)
+  isDefault Boolean   @default(false) @map("is_default")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("addresses")
 }
 
 // ============================================
