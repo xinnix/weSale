@@ -111,6 +111,16 @@ export const PERMISSIONS = {
     UPDATE: 'agent:update',
     DELETE: 'agent:delete',
   },
+  PRODUCT: {
+    CREATE: 'product:create',
+    READ: 'product:read',
+    UPDATE: 'product:update',
+    DELETE: 'product:delete',
+  },
+  ORDER: {
+    READ: 'order:read',
+    REFUND: 'order:refund',
+  },
 } as const;
 
 export type PermissionString =
@@ -475,3 +485,81 @@ export type ContactListQueryInput = z.infer<typeof ContactListQuerySchema>;
 export type CreateConversationSessionInput = z.infer<typeof CreateConversationSessionSchema>;
 export type UpdateConversationSessionInput = z.infer<typeof UpdateConversationSessionSchema>;
 export type CreateConversationMessageInput = z.infer<typeof CreateConversationMessageSchema>;
+
+// ============================================
+// Product Schemas
+// ============================================
+
+export const ProductStatusSchema = z.enum(['DRAFT', 'ACTIVE', 'ARCHIVED']);
+export const BillingCycleSchema = z.enum(['MONTHLY', 'YEARLY', 'ONE_TIME', 'LIFETIME']);
+
+export const CreateProductSchema = z.object({
+  name: z.string().min(1, '产品名称不能为空'),
+  slug: z.string().min(1, '产品标识不能为空'),
+  description: z.string().optional(),
+  shortDescription: z.string().optional(),
+  coverImage: z.string().optional(),
+  images: z.array(z.string()).optional().default([]),
+  category: z.string().optional(),
+  priceFen: z.number().int().positive('价格必须为正整数'),
+  originalPriceFen: z.number().int().positive().optional(),
+  billingCycle: BillingCycleSchema.optional().default('ONE_TIME'),
+  features: z.array(z.string()).optional().default([]),
+  trialDays: z.number().int().min(0).optional(),
+  status: ProductStatusSchema.optional().default('DRAFT'),
+  sort: z.number().int().optional().default(0),
+});
+
+export const UpdateProductSchema = z.object({
+  name: z.string().min(1).optional(),
+  slug: z.string().min(1).optional(),
+  description: z.string().nullable().optional(),
+  shortDescription: z.string().nullable().optional(),
+  coverImage: z.string().nullable().optional(),
+  images: z.array(z.string()).optional(),
+  category: z.string().nullable().optional(),
+  priceFen: z.number().int().positive().optional(),
+  originalPriceFen: z.number().int().positive().nullable().optional(),
+  billingCycle: BillingCycleSchema.optional(),
+  features: z.array(z.string()).optional(),
+  trialDays: z.number().int().min(0).nullable().optional(),
+  status: ProductStatusSchema.optional(),
+  sort: z.number().int().optional(),
+});
+
+// ============================================
+// Order Schemas
+// ============================================
+
+export const OrderStatusSchema = z.enum([
+  'PENDING',
+  'PAID',
+  'COMPLETED',
+  'REFUNDING',
+  'REFUNDED',
+  'CANCELLED',
+]);
+
+export const CreateOrderSchema = z.object({
+  contactId: z.string().min(1, '客户ID不能为空'),
+  productId: z.string().min(1, '产品ID不能为空'),
+  sessionId: z.string().optional(),
+  quantity: z.number().int().min(1).optional().default(1),
+  metadata: z.record(z.string(), z.any()).optional(),
+});
+
+export const RefundOrderSchema = z.object({
+  refundReason: z.string().min(1, '退款原因不能为空'),
+});
+
+// ============================================
+// Product & Order 类型导出
+// ============================================
+
+export type ProductStatus = z.infer<typeof ProductStatusSchema>;
+export type BillingCycle = z.infer<typeof BillingCycleSchema>;
+export type OrderStatus = z.infer<typeof OrderStatusSchema>;
+export type CreateProductInput = z.infer<typeof CreateProductSchema>;
+export type UpdateProductInput = z.infer<typeof UpdateProductSchema>;
+export type CreateOrderInput = z.infer<typeof CreateOrderSchema>;
+export type RefundOrderInput = z.infer<typeof RefundOrderSchema>;

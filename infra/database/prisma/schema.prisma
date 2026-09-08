@@ -32,6 +32,8 @@ model Admin {
   agentUpdatedBy Agent[] @relation("AgentUpdatedBy")
   wecomConfigCreatedBy WecomConfig[] @relation("WecomConfigCreatedBy")
   wecomConfigUpdatedBy WecomConfig[] @relation("WecomConfigUpdatedBy")
+  productCreatedBy Product[] @relation("ProductCreatedBy")
+  productUpdatedBy Product[] @relation("ProductUpdatedBy")
 
   @@index([email])
   @@index([username])
@@ -350,6 +352,28 @@ enum MessageOrigin {
   SERVICER
 }
 
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+  ONE_TIME
+  LIFETIME
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  COMPLETED
+  REFUNDING
+  REFUNDED
+  CANCELLED
+}
+
 // ============================================
 // 访客档案 (Contact)
 // ============================================
@@ -374,6 +398,7 @@ model Contact {
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
   sessions        ConversationSession[]
+  orders          Order[]
 
   @@index([status])
   @@index([intentLevel])
@@ -399,6 +424,7 @@ model ConversationSession {
 
   contact         Contact       @relation(fields: [contactId], references: [id])
   messages        ConversationMessage[]
+  orders          Order[]
 
   @@index([contactId])
   @@index([openKfId])
@@ -452,6 +478,77 @@ model KfSyncCursor {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("kf_sync_cursors")
+}
+
+// ============================================
+// 产品模型 (Product)
+// ============================================
+model Product {
+  id                String        @id @default(cuid())
+  name              String
+  slug              String        @unique
+  description       String?       @db.Text
+  shortDescription  String?       @db.Text @map("short_description")
+  coverImage        String?       @map("cover_image")
+  images            String[]      @default([])
+  category          String?
+  priceFen          Int           @map("price_fen")
+  originalPriceFen  Int?          @map("original_price_fen")
+  billingCycle      BillingCycle  @default(ONE_TIME) @map("billing_cycle")
+  features          Json          @default("[]")
+  trialDays         Int?          @map("trial_days")
+  status            ProductStatus @default(DRAFT)
+  sort              Int           @default(0)
+  createdById       String?       @map("created_by_id")
+  updatedById       String?       @map("updated_by_id")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+  deletedAt         DateTime?     @map("deleted_at")
+
+  createdBy Admin?  @relation("ProductCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy Admin?  @relation("ProductUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  orders    Order[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([category])
+  @@index([deletedAt])
+  @@map("products")
+}
+
+// ============================================
+// 订单模型 (Order)
+// ============================================
+model Order {
+  id                String      @id @default(cuid())
+  orderNo           String      @unique @map("order_no")
+  contactId         String      @map("contact_id")
+  productId         String      @map("product_id")
+  sessionId         String?     @map("session_id")
+  quantity          Int         @default(1)
+  unitPriceFen      Int         @map("unit_price_fen")
+  totalAmountFen    Int         @map("total_amount_fen")
+  status            OrderStatus @default(PENDING)
+  paidAt            DateTime?   @map("paid_at")
+  paidTransactionId String?     @map("paid_transaction_id")
+  refundedAt        DateTime?   @map("refunded_at")
+  refundAmountFen   Int?        @map("refund_amount_fen")
+  refundReason      String?     @map("refund_reason")
+  metadata          Json?
+  createdById       String?     @map("created_by_id")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  contact Contact              @relation(fields: [contactId], references: [id])
+  product Product              @relation(fields: [productId], references: [id])
+  session  ConversationSession? @relation(fields: [sessionId], references: [id])
+
+  @@index([contactId])
+  @@index([productId])
+  @@index([status])
+  @@index([orderNo])
+  @@index([createdAt])
+  @@map("orders")
 }
 
 // ============================================
