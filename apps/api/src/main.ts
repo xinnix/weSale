@@ -10,6 +10,8 @@ import { PrismaService } from './prisma/prisma.service';
 import { FileStorageService } from './shared/services/file-storage.service';
 import { OrderService } from './modules/product/services/order.service';
 import { WechatPayService } from './modules/payment/services/wechat-pay.service';
+import { WechatKfApiService } from './modules/wechat-kf/services/kf-api.service';
+import { WecomApiService } from './modules/wecom/services/wecom-api.service';
 import { appRouter } from './trpc/app.router';
 import {
   createContext,
@@ -17,6 +19,8 @@ import {
   setFileStorageService,
   setOrderService,
   setWechatPayService,
+  setWechatKfApiService,
+  setWecomApiService,
   setAppInstance,
 } from './trpc/trpc';
 import * as trpcExpress from '@trpc/server/adapters/express';
@@ -109,6 +113,8 @@ async function bootstrap() {
   // tRPC 层使用的业务服务注册（修复模块级 new 绕过 DI 的问题）
   setOrderService(app.get(OrderService));
   setWechatPayService(app.get(WechatPayService));
+  setWechatKfApiService(app.get(WechatKfApiService));
+  setWecomApiService(app.get(WecomApiService));
 
   setAppInstance(app);
 

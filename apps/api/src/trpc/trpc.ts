@@ -4,6 +4,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { FileStorageService } from '../shared/services/file-storage.service';
 import { OrderService } from '../modules/product/services/order.service';
 import { WechatPayService } from '../modules/payment/services/wechat-pay.service';
+import { WechatKfApiService } from '../modules/wechat-kf/services/kf-api.service';
+import { WecomApiService } from '../modules/wecom/services/wecom-api.service';
 import jwt from 'jsonwebtoken';
 import { INestApplication } from '@nestjs/common';
 import { BusinessException } from '../core/exceptions';
@@ -14,6 +16,8 @@ let prismaServiceInstance: PrismaService | null = null;
 let fileStorageServiceInstance: FileStorageService | null = null;
 let orderServiceInstance: OrderService | null = null;
 let wechatPayServiceInstance: WechatPayService | null = null;
+let wechatKfApiServiceInstance: WechatKfApiService | null = null;
+let wecomApiServiceInstance: WecomApiService | null = null;
 let appInstance: INestApplication | null = null;
 
 export const setPrismaService = (prisma: PrismaService) => {
@@ -32,6 +36,14 @@ export const setWechatPayService = (wechatPayService: WechatPayService) => {
   wechatPayServiceInstance = wechatPayService;
 };
 
+export const setWechatKfApiService = (service: WechatKfApiService) => {
+  wechatKfApiServiceInstance = service;
+};
+
+export const setWecomApiService = (service: WecomApiService) => {
+  wecomApiServiceInstance = service;
+};
+
 export const getOrderService = (): OrderService => {
   if (!orderServiceInstance) {
     throw new Error('OrderService 未注册（应在 main.ts 启动时通过 setOrderService 注入）');
@@ -41,6 +53,22 @@ export const getOrderService = (): OrderService => {
 
 export const getWechatPayService = (): WechatPayService | null => {
   return wechatPayServiceInstance;
+};
+
+export const getWechatKfApiService = (): WechatKfApiService => {
+  if (!wechatKfApiServiceInstance) {
+    throw new Error(
+      'WechatKfApiService 未注册（应在 main.ts 启动时通过 setWechatKfApiService 注入）',
+    );
+  }
+  return wechatKfApiServiceInstance;
+};
+
+export const getWecomApiService = (): WecomApiService => {
+  if (!wecomApiServiceInstance) {
+    throw new Error('WecomApiService 未注册（应在 main.ts 启动时通过 setWecomApiService 注入）');
+  }
+  return wecomApiServiceInstance;
 };
 
 export const setAppInstance = (app: INestApplication) => {

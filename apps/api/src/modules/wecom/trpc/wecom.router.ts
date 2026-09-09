@@ -7,11 +7,7 @@ import {
   SyncKfMessageSchema,
 } from '@opencode/shared';
 import { createCrudRouterWithCustom, createReadOnlyRouter } from '../../../trpc/trpc.helper';
-import { permissionProcedure, protectedProcedure } from '../../../trpc/trpc';
-import { WecomApiService } from '../services/wecom-api.service';
-import { RedisService } from '../../../shared/services/redis.service';
-
-const wecomApiService = new WecomApiService(new RedisService(null as any));
+import { permissionProcedure, protectedProcedure, getWecomApiService } from '../../../trpc/trpc';
 
 const maskSecret = (value: string): string => {
   if (!value || value.length <= 4) return '****';
@@ -170,7 +166,7 @@ export const wecomRouter = {
     });
     if (!config) throw new Error('WecomConfig 不存在');
 
-    const accessToken = await wecomApiService.getAccessToken(config.corpId, config.secret);
+    const accessToken = await getWecomApiService().getAccessToken(config.corpId, config.secret);
 
     const msgBody: Record<string, any> = {
       touser: input.toUser,
@@ -181,7 +177,7 @@ export const wecomRouter = {
       [input.msgType]: input.content,
     };
 
-    const result = await wecomApiService.sendMessage(accessToken, msgBody);
+    const result = await getWecomApiService().sendMessage(accessToken, msgBody);
 
     await ctx.prisma.wecomMessage.create({
       data: {
@@ -203,7 +199,7 @@ export const wecomRouter = {
     });
     if (!config) throw new Error('WecomConfig 不存在');
 
-    const accessToken = await wecomApiService.getAccessToken(config.corpId, config.secret);
+    const accessToken = await getWecomApiService().getAccessToken(config.corpId, config.secret);
 
     const msgBody: Record<string, any> = {
       kf_account: input.kfAccount,
@@ -212,7 +208,7 @@ export const wecomRouter = {
       [input.msgType]: input.content,
     };
 
-    const result = await wecomApiService.sendKfMessage(accessToken, msgBody);
+    const result = await getWecomApiService().sendKfMessage(accessToken, msgBody);
 
     await ctx.prisma.wecomMessage.create({
       data: {
@@ -240,8 +236,8 @@ export const wecomRouter = {
       });
       if (!config) throw new Error('WecomConfig 不存在');
 
-      const accessToken = await wecomApiService.getAccessToken(config.corpId, config.secret);
-      return wecomApiService.getKfAccountList(accessToken);
+      const accessToken = await getWecomApiService().getAccessToken(config.corpId, config.secret);
+      return await getWecomApiService().getKfAccountList(accessToken);
     }),
 
   // 同步客服消息
@@ -251,8 +247,8 @@ export const wecomRouter = {
     });
     if (!config) throw new Error('WecomConfig 不存在');
 
-    const accessToken = await wecomApiService.getAccessToken(config.corpId, config.secret);
-    return wecomApiService.syncKfMessage(
+    const accessToken = await getWecomApiService().getAccessToken(config.corpId, config.secret);
+    return await getWecomApiService().syncKfMessage(
       accessToken,
       input.openKfId,
       input.cursor,

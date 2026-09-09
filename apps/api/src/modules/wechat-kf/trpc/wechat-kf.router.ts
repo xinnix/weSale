@@ -5,16 +5,7 @@ import {
   protectedProcedure,
 } from '../../../trpc/trpc.helper';
 import { UpdateContactSchema, UpdateConversationSessionSchema } from '@opencode/shared';
-import { WechatKfApiService } from '../services/kf-api.service';
-import { WecomApiService } from '../../wecom/services/wecom-api.service';
-import { ConfigService } from '@nestjs/config';
-import { RedisService } from '../../../shared/services/redis.service';
-
-// 与 wecom router 相同的模式：模块级服务实例
-const kfApiService = new WechatKfApiService(
-  new WecomApiService(new RedisService(null as any)),
-  new ConfigService(),
-);
+import { getWechatKfApiService } from '../../../trpc/trpc';
 
 // ============================================
 // Contact 子路由 — 访客管理
@@ -145,7 +136,11 @@ const sessionRouter = createCrudRouterWithCustom(
         if (!session) throw new Error('会话不存在');
 
         try {
-          await kfApiService.transKfServiceState(session.openKfId, session.contact.openId, 3);
+          await getWechatKfApiService().transKfServiceState(
+            session.openKfId,
+            session.contact.openId,
+            3,
+          );
         } catch (e) {
           console.error('transKfServiceState failed:', e);
         }
@@ -223,7 +218,11 @@ const messageRouter = createCrudRouterWithCustom(
         });
         if (!session) throw new Error('会话不存在');
 
-        await kfApiService.sendText(session.openKfId, session.contact.openId, input.content);
+        await getWechatKfApiService().sendText(
+          session.openKfId,
+          session.contact.openId,
+          input.content,
+        );
 
         const message = await ctx.prisma.conversationMessage.create({
           data: {
@@ -264,7 +263,7 @@ const messageRouter = createCrudRouterWithCustom(
         });
         if (!session) throw new Error('会话不存在');
 
-        await kfApiService.sendLink(session.openKfId, session.contact.openId, {
+        await getWechatKfApiService().sendLink(session.openKfId, session.contact.openId, {
           title: input.title,
           desc: input.desc || '',
           url: input.url,
@@ -342,7 +341,7 @@ const accountRouter = {
       }),
     )
     .query(async ({ input }) => {
-      return kfApiService.getKfAccountList(input.offset, input.limit);
+      return await getWechatKfApiService().getKfAccountList(input.offset, input.limit);
     }),
 };
 
