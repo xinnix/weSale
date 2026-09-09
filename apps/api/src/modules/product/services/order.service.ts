@@ -125,12 +125,21 @@ export class OrderService extends BaseService<'order'> {
   /**
    * 支付成功编排（支付回调调用）：
    * 事务内 Order→PAID、Contact→CONVERTED、Session→CONVERTED 全链路同步。
-   * 已 PAID 的重复回调幂等返回。
+   * 已 PAID 的重复回调幂等返回；金额与订单不符时拒绝入账（抛错 → 回调返回 FAIL）。
    */
-  async markPaidByOrderNo(orderNo: string, transactionId: string) {
+  async markPaidByOrderNo(orderNo: string, transactionId: string, expectedAmountFen?: number) {
     return this.prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({ where: { orderNo } });
       if (!order) throw new Error('Order not found');
+
+      if (expectedAmountFen !== undefined && order.totalAmountFen !== expectedAmountFen) {
+        this.logger.error(
+          `回调金额不符，拒绝入账: 订单 ${orderNo} 应为 ${order.totalAmountFen} 分，回调 ${expectedAmountFen} 分`,
+        );
+        throw new Error(
+          `Amount mismatch for order ${orderNo}: expected ${order.totalAmountFen}, got ${expectedAmountFen}`,
+        );
+      }
 
       if (order.status === 'PAID') {
         this.logger.log(`订单 ${orderNo} 已是 PAID，幂等跳过`);

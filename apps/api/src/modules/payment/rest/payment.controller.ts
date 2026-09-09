@@ -11,12 +11,16 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { WechatPayService } from '../services/wechat-pay.service';
+import { OrderService } from '../../product/services/order.service';
 
 @Controller('payments')
 export class PaymentController {
   private readonly logger = new Logger(PaymentController.name);
 
-  constructor(private readonly wechatPayService: WechatPayService) {}
+  constructor(
+    private readonly wechatPayService: WechatPayService,
+    private readonly orderService: OrderService,
+  ) {}
 
   /**
    * 微信支付回调通知
@@ -44,10 +48,15 @@ export class PaymentController {
         'wechatpay-serial': headers['wechatpay-serial'],
       });
 
-      res.status(200).send();
+      // 幂等入账编排：金额不符/状态非法时抛错 → 返回 FAIL 让微信重试（重放幂等）
+      const order = await this.orderService.markPaidByOrderNo(
+        payment.orderNo,
+        payment.transactionId,
+        payment.amount,
+      );
 
-      // 业务方在此处实现支付成功后的业务逻辑
-      this.logger.log(`支付回调验签成功: ${payment.orderId} → ${payment.transactionId}`);
+      res.status(200).send();
+      this.logger.log(`支付入账完成: ${payment.orderNo} → ${order.status}`);
     } catch (error: any) {
       this.logger.error('支付回调处理失败', error);
       if (!res.headersSent) {
@@ -80,10 +89,13 @@ export class PaymentController {
         'wechatpay-serial': headers['wechatpay-serial'],
       });
 
-      res.status(200).send();
+      // 仅退款成功推进 REFUNDED；CLOSED/ABNORMAL 保留 REFUNDING 供人工处理
+      if (refund.refundStatus === 'SUCCESS') {
+        await this.orderService.handleRefundCallback(refund.orderNo);
+      }
 
-      // 业务方在此处实现退款成功后的业务逻辑
-      this.logger.log(`退款回调验签成功: ${refund.orderNo}`);
+      res.status(200).send();
+      this.logger.log(`退款回调处理完成: ${refund.orderNo} → ${refund.refundStatus}`);
     } catch (error: any) {
       this.logger.error('退款回调处理失败', error);
       if (!res.headersSent) {

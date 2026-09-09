@@ -19,6 +19,7 @@ import { WecomModule } from './modules/wecom/module';
 import { WechatKfModule } from './modules/wechat-kf/module';
 import { LandingTrackModule } from './modules/landing-track/module';
 import { ProductModule } from './modules/product/module';
+import { MallModule } from './modules/mall/module';
 // 全局拦截器
 import { TransformInterceptor } from './core/interceptors/transform.interceptor';
 import { FileStorageService } from './shared/services/file-storage.service';
@@ -50,6 +51,7 @@ import { FileStorageService } from './shared/services/file-storage.service';
     WechatKfModule,
     LandingTrackModule,
     ProductModule,
+    MallModule,
   ],
   providers: [
     Reflector,

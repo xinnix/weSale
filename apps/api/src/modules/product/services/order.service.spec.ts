@@ -147,4 +147,30 @@ describe('OrderService.markPaidByOrderNo', () => {
     expect(tx.contact.update).not.toHaveBeenCalled();
     expect(tx.conversationSession.update).not.toHaveBeenCalled();
   });
+
+  it('回调金额与订单不符时拒绝入账', async () => {
+    const pendingOrder = {
+      id: 'o3',
+      orderNo: 'WS20260909DDDDDD',
+      status: 'PENDING',
+      contactId: null,
+      sessionId: null,
+      totalAmountFen: 9900,
+    };
+    const tx = {
+      order: {
+        findUnique: vi.fn(async () => pendingOrder),
+        update: vi.fn(),
+      },
+      contact: { update: vi.fn() },
+      conversationSession: { update: vi.fn() },
+    };
+    const prisma: any = { $transaction: vi.fn(async (fn: any) => fn(tx)) };
+    const service = new OrderService(prisma);
+
+    await expect(service.markPaidByOrderNo('WS20260909DDDDDD', 'tx000', 100)).rejects.toThrow(
+      'Amount mismatch',
+    );
+    expect(tx.order.update).not.toHaveBeenCalled();
+  });
 });
