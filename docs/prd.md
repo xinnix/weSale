@@ -1,799 +1,344 @@
-# AI 销售 Agent 系统
+# weSale 产品需求文档（PRD v2.0）
 
-## 产品规格文档 v4.0 — 基于 OpenCode Scaffold
+> **版本**：v2.0（2026-09-09）
+> **地位**：本文件是产品目标的**单一真理源**（SSOT），后期开发以此对齐。进度台账见 `docs/ROADMAP.md`，v1.0 原文与决策过程存档于 `docs/prd-copilot.md`。
+> **状态**：✅ **已定稿**（2026-09-09 人工审核通过）——范围边界、决策记录、开放问题均已拍板（开放问题按文中建议确认，标注「设计时定」的按期定）；后续变更在版本历史追加，进度台账见 `docs/ROADMAP.md`。
 
-> 本文档已与 OpenCode Scaffold 对齐。
-> 开发时优先复用脚手架内置模块，新增业务遵循脚手架既有模式。
+## 版本历史
 
----
-
-## 一、产品定义
-
-访客访问落地页 → 点击微信客服按钮 → DeepSeek AI Agent 全自动对话
-→ 识别购买意向 → 发送支付链接 → 付款 → 账户自动开通。
-
-产品卖自己：AI Agent 通过这次对话，把"AI 销售 Agent 系统"本身卖给访客。
-访客在被 AI 说服的过程中，亲身体验了产品的核心能力。
+| 版本     | 日期           | 定位                                    | 去向                         |
+| -------- | -------------- | --------------------------------------- | ---------------------------- |
+| v4.0     | 2026-04        | 自营 AI 销售定位（「产品卖自己」）      | 已废弃，git 历史可查         |
+| v1.0     | 2026-09-08     | 全自动 AI 私域增长引擎（原始稿）        | 存档于 `docs/prd-copilot.md` |
+| **v2.0** | **2026-09-09** | **人机协同销售 Copilot + 会员积分留存** | **本文件**                   |
 
 ---
 
-## 二、技术栈（脚手架对齐）
+## 一、产品定位与目标
 
-| 层          | 选型                                 | 说明         |
-| ----------- | ------------------------------------ | ------------ |
-| Backend     | NestJS + tRPC + Prisma               | 脚手架标准   |
-| 数据库      | PostgreSQL                           | 脚手架标准   |
-| 缓存 / 队列 | Redis + BullMQ                       | 脚手架标准   |
-| Admin UI    | React + Refine + Ant Design 5 + tRPC | 脚手架标准   |
-| 落地页      | Next.js                              | 独立应用     |
-| AI          | DeepSeek API（OpenAI 兼容）          | 新增         |
-| 微信支付    | 已内置（payment 模块）               | 扩展 H5 场景 |
-| 微信集成    | 已内置（wechat 模块）                | 扩展 KF 接入 |
+### 1.1 一句话定位
 
-**DeepSeek 接入**（OpenAI SDK，改 base_url）：
+帮电商/私域商家的销售团队，把「微信客服自动接待 → 引导加企微好友 → 企微侧边栏 AI 辅助人工成交 → 小程序积分复购留存」串成一条完整的增长链路的 B2B 商家工具。
+
+### 1.2 目标用户
+
+- **采购方**：有私域运营需求的电商/品牌商家（按订阅付费，单实例部署）
+- **使用者**：商家的销售/客服人员（企微员工，侧边栏与客服接待）、顾客（小程序会员）
+
+### 1.3 核心增长链路
 
 ```
-base_url : https://api.deepseek.com
-model    : deepseek-chat
+路径 A（KF 引导）                  路径 B（活码物料）
+顾客咨询（微信客服）                包裹卡 / 门店 / 广告
+    │  F1 AI 全自动接待                 │  F8 扫活码添加（state 渠道参数 + 自动打标签）
+    ▼                                  │
+购买意向 / 要求人工                     │
+    │  F2 引导加企微（归因）            │
+    └──────────────┬───────────────────┘
+                   ▼
+           企微好友（销售人工跟进）
+                   │  F4 侧边栏 Copilot：画像 + 意图识别 + 三策略话术
+                   │  （一键发送，销售在企微客户端内确认——风控红线）
+                   ▼
+           成交（小程序 JSAPI 支付，订单归因）
+                   │  F7 生命周期任务 + F6 积分
+                   ▼
+           复购留存
 ```
+
+### 1.4 产品原则
+
+| #   | 原则             | 说明                                                                                                                                                                                      |
+| --- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1  | **人工确认红线** | 侧边栏 Copilot 只生成话术建议，所有发送由销售逐条手动触发并经企微客户端确认（官方 `sendChatMessage`）；系统**严禁**静默/定时/批量自动发送（硬编码约束，不可配置绕过）；一键复制保留为兜底 |
+| P2  | **双轨制**       | 微信客服（KF）通道保留 AI 全自动接待（异步客服消息，官方产品形态）；侧边栏话术走人工                                                                                                      |
+| P3  | **单实例售卖**   | 每商家一套部署，不做多租户 SaaS，schema 无 tenant_id                                                                                                                                      |
+| P4  | **支付收敛**     | 小程序 JSAPI 为唯一收款路径                                                                                                                                                               |
+| P5  | **人机分工**     | AI 负责：接待、话术生成、意图识别、任务提醒；人负责：发送、发圈、群运营、最终决策                                                                                                         |
+
+### 1.5 北极星指标
+
+| 指标           | 定义                                                                               | 对应链路 |
+| -------------- | ---------------------------------------------------------------------------------- | -------- |
+| 私域转化率     | KF 会话 → 成功添加企微好友 的比例                                                  | F2       |
+| Copilot 采纳率 | 生成话术被销售实际发送的比例（`sendChatMessage` 成功回调上报；复制事件视为弱采纳） | F4       |
+| 30 日复购率    | 首单后 30 日内二次下单的顾客比例                                                   | F6/F7    |
 
 ---
 
-## 三、模块地图
+## 二、范围边界
 
-### 3.1 复用脚手架内置模块（不重复造轮子）
+### 2.1 In-Scope（V1 范围，标注所属阶段）
 
-| 脚手架模块            | 本项目用途                                  |
-| --------------------- | ------------------------------------------- |
-| `auth`                | 管理员登录、JWT 签发、Token 刷新            |
-| `admin`               | 管理员 CRUD（运营人员账号）                 |
-| `role` / `permission` | 管理员 RBAC（VIEWER / ADMIN / SUPER_ADMIN） |
-| `payment`             | 微信支付基础能力，**扩展 H5 支付场景**      |
-| `wechat`              | 微信基础 API，**扩展微信客服（KF）接入**    |
-| `upload`              | 管理后台素材上传（逼单卡片封面图等）        |
+| #   | 范围                                                                                                  | 阶段                     |
+| --- | ----------------------------------------------------------------------------------------------------- | ------------------------ |
+| 1   | 微信客服 AI 全自动接待 + AI 建单发小程序卡片逼单                                                      | Phase 1（已运行/进行中） |
+| 2   | 自动引导加企微成员（二维码方案 + 归因回调）                                                           | Phase 2 M1               |
+| 3   | 企微原生侧边栏 Copilot：OAuth2 身份、画像聚合、意图识别、三策略流式生成、一键复制                     | Phase 2 M1-M2            |
+| 4   | 知识库 RAG（pgvector + 关键词双轨）+ Persona/欢迎语配置 DB 化                                         | Phase 2 M3               |
+| 5   | 动态兑换卡/优惠券链接生成（绑定 contactId 的一次性链接）                                              | Phase 2 M4               |
+| 6   | 小程序会员终端：积分查询、订单核销入账、积分/积分+微额支付兑换、成功页企微获客按钮                    | Phase 2.5 M5             |
+| 7   | 生命周期任务引擎：Offset 规则调度 + 侧边栏待办置顶 + AI 跟进话术                                      | Phase 2.5 M6             |
+| 8   | RAG 知识库导入（JSON/Markdown 格式）                                                                  | Phase 2 M3               |
+| 9   | 企微活码获客：admin 生成/管理「联系我」活码（state 渠道参数 + 自动标签 + 归因），投放物料扫码添加好友 | Phase 2 M1               |
 
-### 3.2 新增模块（用 `/genModule` 生成骨架）
+### 2.2 Out-of-Scope（严格排除）
 
-| 模块                  | 命令                               | 说明              |
-| --------------------- | ---------------------------------- | ----------------- |
-| `contact`             | `/genModule contact`               | 访客档案          |
-| `conversationSession` | `/genModule conversationSession`   | 对话会话          |
-| `conversationMessage` | `/genModule conversationMessage`   | 消息归档          |
-| `escalationQueue`     | `/genModule escalationQueue`       | 人工接管队列      |
-| `wechatKf`            | 手写（纯 REST Webhook，不走 tRPC） | 微信客服消息接入  |
-| `agentEngine`         | 手写（核心业务逻辑）               | DeepSeek 对话引擎 |
-
----
-
-## 四、Prisma Schema
-
-在 `infra/database/prisma/schema.prisma` 追加以下 Model。
-命名遵循脚手架规范：PascalCase Model，snake_case 字段（`@@map`）。
-
-```prisma
-// ─── 访客档案 ─────────────────────────────────────────
-model Contact {
-  id             BigInt    @id @default(autoincrement())
-  openId         String    @unique @map("open_id")
-  nickname       String?   // AES-256-GCM 加密存储
-  utmSource      String?   @map("utm_source")
-  utmCampaign    String?   @map("utm_campaign")
-  refCode        String?   @map("ref_code")
-  intentLevel    IntentLevel @default(UNKNOWN) @map("intent_level")
-  status         ContactStatus @default(ACTIVE)
-  convertedAt    DateTime? @map("converted_at")
-  paidAmountFen  Int?      @map("paid_amount_fen")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-
-  sessions       ConversationSession[]
-  payments       PaymentRecord[]
-
-  @@map("contacts")
-}
-
-// ─── 对话会话 ─────────────────────────────────────────
-model ConversationSession {
-  id            BigInt    @id @default(autoincrement())
-  sessionKey    String    @unique @map("session_key") // open_id + timestamp
-  contactId     BigInt    @map("contact_id")
-  openId        String    @map("open_id")
-  state         SessionState @default(GREETING)
-  intentLevel   IntentLevel  @default(UNKNOWN) @map("intent_level")
-  turnCount     Int       @default(0) @map("turn_count")
-  tokensUsed    Int       @default(0) @map("tokens_used")
-  utmSource     String?   @map("utm_source")
-  escalatedAt   DateTime? @map("escalated_at")
-  convertedAt   DateTime? @map("converted_at")
-  lastActiveAt  DateTime  @default(now()) @map("last_active_at")
-  createdAt     DateTime  @default(now()) @map("created_at")
-
-  contact       Contact   @relation(fields: [contactId], references: [id])
-  messages      ConversationMessage[]
-  escalation    EscalationQueue?
-  payments      PaymentRecord[]
-
-  @@map("conversation_sessions")
-}
-
-// ─── 消息归档 ─────────────────────────────────────────
-model ConversationMessage {
-  id                BigInt    @id @default(autoincrement())
-  sessionId         BigInt    @map("session_id")
-  role              MessageRole
-  content           String    @db.Text // AES-256-GCM 加密
-  msgType           MessageType @default(TEXT) @map("msg_type")
-  tokensInput       Int?      @map("tokens_input")
-  tokensOutput      Int?      @map("tokens_output")
-  aiStateTransition String?   @map("ai_state_transition")
-  aiIntentLevel     String?   @map("ai_intent_level")
-  aiInternalNote    String?   @db.Text @map("ai_internal_note")
-  sendPaymentCard   Boolean   @default(false) @map("send_payment_card")
-  qualityScore      Int?      @map("quality_score") // 运营质检 1-5
-  createdAt         DateTime  @default(now()) @map("created_at")
-
-  session           ConversationSession @relation(fields: [sessionId], references: [id])
-
-  @@index([sessionId, createdAt])
-  @@map("conversation_messages")
-}
-
-// ─── 支付记录 ─────────────────────────────────────────
-model PaymentRecord {
-  id            BigInt    @id @default(autoincrement())
-  contactId     BigInt    @map("contact_id")
-  sessionId     BigInt    @map("session_id")
-  outTradeNo    String    @unique @map("out_trade_no") // 幂等键
-  transactionId String?   @map("transaction_id")
-  productName   String    @map("product_name")
-  closingChip   String?   @db.Text @map("closing_chip")
-  amountFen     Int       @map("amount_fen")
-  status        PaymentStatus @default(PENDING)
-  expiresAt     DateTime  @map("expires_at")
-  paidAt        DateTime? @map("paid_at")
-  rawCallback   Json?     @map("raw_callback")
-  createdAt     DateTime  @default(now()) @map("created_at")
-
-  contact       Contact   @relation(fields: [contactId], references: [id])
-  session       ConversationSession @relation(fields: [sessionId], references: [id])
-
-  @@map("payment_records")
-}
-
-// ─── 人工接管队列 ─────────────────────────────────────
-model EscalationQueue {
-  id                BigInt    @id @default(autoincrement())
-  sessionId         BigInt    @unique @map("session_id")
-  contactId         BigInt    @map("contact_id")
-  reason            EscalationReason
-  aiSummary         String?   @db.Text @map("ai_summary")
-  recommendedReply  String?   @db.Text @map("recommended_reply")
-  assignedTo        Int?      @map("assigned_to") // Admin.id
-  status            EscalationStatus @default(PENDING)
-  createdAt         DateTime  @default(now()) @map("created_at")
-  resolvedAt        DateTime? @map("resolved_at")
-
-  session           ConversationSession @relation(fields: [sessionId], references: [id])
-
-  @@index([status, createdAt])
-  @@map("escalation_queue")
-}
-
-// ─── Enums ────────────────────────────────────────────
-enum IntentLevel {
-  UNKNOWN
-  LOW
-  MEDIUM
-  HIGH
-  CLOSING
-}
-
-enum ContactStatus {
-  ACTIVE
-  CONVERTED
-  ESCALATED
-  ARCHIVED
-}
-
-enum SessionState {
-  GREETING
-  NEEDS_DISCOVERY
-  PRODUCT_MATCH
-  OBJECTION_HANDLING
-  CLOSING
-  CONVERTED
-  ESCALATED
-  TIMED_OUT
-}
-
-enum MessageRole {
-  user
-  assistant
-}
-
-enum MessageType {
-  TEXT
-  IMAGE
-  LINK_CARD
-  SYSTEM_NOTE
-}
-
-enum PaymentStatus {
-  PENDING
-  PAID
-  REFUNDED
-  EXPIRED
-}
-
-enum EscalationReason {
-  USER_REQUESTED
-  AI_CONFUSION
-  EMOTION_DETECTED
-  LONG_STALL
-}
-
-enum EscalationStatus {
-  PENDING
-  IN_PROGRESS
-  RESOLVED
-}
-```
-
-Schema 变更后执行：`/db-migrate` → `/sync`
+| #   | 排除项                           | 原因                                                                               |
+| --- | -------------------------------- | ---------------------------------------------------------------------------------- |
+| 1   | 企微社群全自动无人值守跟发机器人 | 风控风险（群内定时推送/朋友圈**辅助**不在排除之列，见 Phase 3）                    |
+| 2   | 多租户 SaaS 隔离体系             | 单实例售卖模式                                                                     |
+| 3   | 在线支付多方分账                 | 超出单商家场景                                                                     |
+| 4   | 对话式 BI 报表引擎               | 非核心链路                                                                         |
+| 5   | **Chrome 扩展端 Copilot**        | V1 移出（维护成本高、企微桌面版兼容风险）；V2 待评估                               |
+| 6   | 企微好友私聊的对话上下文读取     | 企微 API 不可行（会话存档除外），V1 私聊场景降级为画像驱动；会话存档评估在 Phase 3 |
 
 ---
 
-## 五、服务层（遵循 BaseService 模式）
+## 三、核心决策记录
 
-### 5.1 ContactService
+| #   | 决策               | 内容                                                                                                                                                                                                           | 依据                                                                                                                                                      |
+| --- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | 产品形态           | 人机协同（Copilot）而非全自动销售；KF 自动接待保留（双轨制）                                                                                                                                                   | 2026-09-08 拍板；已有资产复用 + PRD v1.0 风控要求                                                                                                         |
+| D2  | 侧边栏载体         | 仅企微原生聊天工具栏 H5（JS-SDK `getCurExternalContact` 定位当前客户）；Chrome 扩展移出 V1                                                                                                                     | 维护成本与兼容风险                                                                                                                                        |
+| D3  | 会话上下文来源     | 企微 API 无法读取会话消息；V1 上下文源 = 自有 DB 的 KF 会话记录（`ConversationMessage` 已全量入库）；好友私聊 V1 仅画像驱动                                                                                    | 企微唯一会话读取通道是付费会话存档（合规门槛高），Phase 3 再评估                                                                                          |
+| D4  | 侧边栏发送方式     | 一键发送为主（企微官方 `sendChatMessage`：销售点击 → 企微客户端内逐条手动确认/发送）+ 一键复制兜底；严禁无人值守自动发送（P1）                                                                                 | 2026-09-09 放开（原「仅复制」从严版废止）；官方接口天然保留人在回路                                                                                       |
+| D5  | 第三身份           | 企微员工（Member）独立于 Admin/User JWT 体系：OAuth2 code → member userid → 接待成员白名单校验 → 短期 Member JWT（type=member）；无 admin 数据面权限                                                           | 侧边栏 OAuth 与 Refine 登录不同源                                                                                                                         |
+| D6  | 引导加好友方案     | V1 默认方案 B「联系我」二维码（免费，state 归因）；方案 A 获客助手链接（点击直达，计费）视转化率与成本再启用                                                                                                   | 成本优先，转化验证后升级                                                                                                                                  |
+| D7  | 前端载体           | 侧边栏新建 `apps/sidebar`（Vite + React 轻量 H5，复用 `@opencode/shared`），不塞进 admin                                                                                                                       | OAuth 体系不同源 + TTFT 预算                                                                                                                              |
+| D8  | 检索方案           | 一期 pgvector + 关键词双轨（单实例 docker-compose 部署友好）                                                                                                                                                   | 部署形态约束                                                                                                                                              |
+| D9  | 侧边栏发送技术方案 | 企微 JS-SDK `ww.sendChatMessage`（聊天工具栏会话接口）：话术 text 消息 + 产品 miniprogram 卡片（复用 KF 卡片的企微关联小程序配置）；发送事件上报后端入库（采纳率 + 审计）                                      | 官方专为侧边栏设计；每次发送均需员工在客户端手动确认（PC 端需再点发送，移动端逐条确认），非无人值守；Mac 端 miniprogram 卡片需企微 ≥4.1.26，M1 spike 实测 |
+| D10 | 引入双路径         | 企微好友引入 = F2 KF 会话引导 + F8 活码扫码（物料/包裹/门店）双路径，共用 `add_contact_way` 生成与 `change_external_contact` 归因回调，按 state 语义分流；标签双写（企微原生 mark_tags + 自有 `Contact.tags`） | 2026-09-09 拍板；活码承载站外流量，KF 承载站内咨询                                                                                                        |
 
-继承 `BaseService<'Contact'>`，额外方法：
+---
 
-```typescript
-// 按 openId 查找或新建（Webhook 入口调用）
-findOrCreateByOpenId(openId: string, utmParams): Promise<Contact>
+## 四、功能需求
 
-// 标记成交（由支付回调调用，在事务内执行）
-markConverted(contactId: bigint, paidAmountFen: number, tx): Promise<void>
+> 编号 F1-F7，每项含描述/关键行为/约束/验收标准。标注「已运行」的功能为现状描述，同样接受审核。
+
+### F1 微信客服 AI 自动接待（已运行，Phase 1 完成逼单真实化）
+
+**描述**：顾客在微信客服发消息 → 回调入库 → AI 生成回复自动发送；识别购买意向时 AI 建 PENDING 订单并发小程序卡片，顾客进小程序完成 JSAPI 支付。
+
+**关键行为**：
+
+- 消息全量入库（`ConversationMessage`），作为后续 Copilot 上下文与画像数据源
+- AI 回复基于 Persona 配置（现 `LLM_SYSTEM_PROMPT_OVERRIDE`，M3 迁移至 `Setting` 模型）
+- 建单动作：`sendPaymentCard`（source=KF_SESSION）；转人工动作：`escalateToHuman`（带原因）
+- 逼单卡片 = 已 spike 验证的小程序卡片（errcode=0）
+
+**约束**：主动消息受微信客服 48h 窗口与条数限制；金额不符回调拒入账。
+
+**验收**：客服会话说「怎么买」→ AI 建 PENDING 单 + 发卡片 → 小程序内支付 → Order PAID + Contact CONVERTED + session CONVERTED；回调重放 3 次状态只变一次。
+
+### F2 自动引导加企微成员（Phase 2 M1）
+
+**描述**：KF 会话中，AI 判断合适时机后自动发送「添加企微好友」引导，客户添加成功后归因到原会话与 Contact。
+
+**关键行为**：
+
+- **方案 B（V1 默认）**：`externalcontact/add_contact_way` 生成二维码 → `uploadKfTempImage` → KF 发图片消息，客户长按识别添加；`state` 参数携带 contactId 短标记（≤30 字节）
+- **方案 A（备选）**：获客助手链接经 `send_link` 下发，客户点击直达加好友页（计费功能，需商家确认定价后启用）
+- **归因闭环**：添加成功 → 企微回调 `change_external_contact`（external_userid + state）→ 以 state 或 unionid 关联回 `Contact` → 后续侧边栏画像随人走
+- 添加好友后的自动欢迎语使用企微后台原生配置（官方能力，不属于无人值守跟发）
+- **与 F8 活码的关系（D10）**：共用 `add_contact_way` 生成与归因回调入口，按 state 语义分流（动态 contactId 短标记 = KF 引导；固定活码短码 = 物料活码）
+
+**约束**：
+
+- 引导时机由 AI 意图判断（明确购买意向 / 要求人工 / 方案确认后），**单会话引导 ≤1 次**（已确认，宁少勿扰）
+- 48h 主动消息条数预算优先保证正常接待，引导消息低优先级
+
+**验收**：客户长按/点击可完成加好友；添加成功后 `Contact` 与新 external_userid 建立关联；侧边栏选中该好友可查到其 KF 会话历史与订单。
+
+### F3 身份映射与 OneID（Phase 2 M1，配合 F2/F4）
+
+**描述**：打通小程序用户（`User`）、客服访客（`Contact`）、企微好友（external_userid）三重身份。
+
+**关键行为**：
+
+- `Contact.userId` 关联字段（新增），归一路径：phone / unionid / order_token 三路匹配
+- `Contact.metadata Jsonb`（新增）承接公域订单结构化属性（first_sku_code、类目层级、购买属性、金额、履约时间）
+- 渠道参数二维码/链接生成（channel_id + order_token + tags），落地页/小程序入口可带参
+
+**约束**：手机号在库内 AES-256 加密（落地时点见开放问题 #4）；不向 LLM API 传输明文手机号与真实姓名。
+
+**验收**：同一自然人在小程序下单、KF 咨询、加企微好友后，侧边栏画像中呈现为同一客户。
+
+### F4 企微侧边栏 AI Copilot（Phase 2 M1-M4）
+
+**F4.1 侧边栏壳与身份（M1）**
+
+- `apps/sidebar` H5 挂载企微聊天工具栏；OAuth2 静默授权 → Member JWT（D5）
+- JS-SDK `getCurExternalContact` 获取当前客户 external_userid
+- Spike：`sendChatMessage` 端到端实测（text + miniprogram 卡片；PC 进聊天窗口需再点发送、移动端逐条确认、Mac miniprogram 卡片需企微 ≥4.1.26）
+- 验收：企微聊天工具栏打开侧边栏，正确识别成员身份与当前客户
+
+**F4.2 客户画像聚合页（M1）**
+
+- 结构化画像：购买记录、活跃标签、积分余额、生命周期阶段、最近 KF 会话摘要
+- 数据隔离：Member 仅能读其接待范围内客户的画像
+- 验收：画像数据与 DB 一致；Member 无法访问 admin 路由与数据面
+
+**F4.3 意图与抗拒识别（M2）**
+
+- 意图分类：`USAGE_CONSULTATION` / `OBJECTION_PRICE` / `SAFETY_CONCERN` / `COMPLAINT` 等（对齐现有 `IntentLevel` 枚举体系扩展）
+- 萃取心理状态：焦虑度、价格敏感度、信任度
+
+**F4.4 三策略回复生成（M2）**
+
+- 策略 A 理性/科普型、策略 B 感性/逼单型、策略 C 搭售/升级型（结合交叉推荐矩阵）
+- 流式生成：TTFT ≤1.5s，三策略完整 ≤4.0s
+- 上下文来源（D3）：KF 会话 = 自有 DB 消息记录；好友私聊 = 仅画像驱动（V1）
+- 验收：TTFT 与完整时长达标；生成内容引用知识库条目时内容正确
+
+**F4.5 快捷动作面板（M2/M4）**
+
+- 一键发送（主路径，D4/D9）：话术以 `sendChatMessage` text 消息、产品以 miniprogram 卡片消息发到当前会话——每次发送均由销售在企微客户端内手动确认完成
+- 产品卡片：`sendChatMessage` miniprogram 消息（复用 KF 卡片的企微关联小程序配置）；绑定 contactId 的一次性兑换/优惠券链接可作卡片落地页，H5 链接为兜底（依赖 Phase 1 支付闭环）
+- 一键复制（兜底）：`sendChatMessage` 不可用环境或失败时降级为复制粘贴
+- 发送事件上报：`sendChatMessage:ok` 回调上报后端入库，用于采纳率统计与合规审计（存储设计见开放问题 #8）
+- **风控红线验收（P1）**：侧边栏前后端不存在任何绕过销售手动确认的静默/定时/批量自动发送逻辑——作为每迭代代码审查项
+
+### F5 知识库与策略配置（Phase 2 M3）
+
+**描述**：行业知识、客诉 SOP、交叉推荐矩阵、人设语气全部配置化，作为 Copilot 与 KF 接待的共享知识层。
+
+**关键行为**：
+
+- `KnowledgeNode` 模型：节点类型 ENTITY（SKU 详情/成分/适用人群/禁忌）/ POLICY（异议处理/售后规则）/ RECO（交叉推荐矩阵：主品属性 → 搭配品）
+- 检索：pgvector 向量 + 关键词双轨（D8），`buildSystemPrompt` 注入检索结果
+- 导入：admin 后台支持 JSON/Markdown 批量导入
+- Persona 配置 DB 化：`Setting` 模型（人设名称、称呼偏好、语气基调、Emoji 密度、欢迎语模板），替代 `LLM_SYSTEM_PROMPT_OVERRIDE` env
+
+**验收**：新增知识条目后，Copilot 生成结果实际引用该条目；admin 可完成知识与人设的全生命周期管理。
+
+### F6 小程序会员积分终端（Phase 2.5 M5）
+
+**描述**：顾客在小程序完成订单核销、积分入账、权益兑换，并在成功页引流回企微。
+
+**关键行为**：
+
+- 身份：微信一键授权手机号登录/绑定（现有静默注册体系上扩展）
+- 核销入账：输入订单号或扫码 → 后端校验（防重复核销）→ `PointsLedger` 流水 + `Contact.pointsBalance` 幂等入账
+- 权益兑换：纯积分兑换 或 积分+微额支付换购指定 SKU/优惠券（兑换订单模型 M5 设计定，见开放问题 #3）
+- 私域引流：核销成功页/兑换成功页放置企微获客按钮，拉起半屏加好友
+
+**约束**：积分不可转赠、不可提现（V1）；兑换涉及支付部分仍走小程序 JSAPI（P4）。
+
+**验收**：同一订单号重复核销只入账一次；兑换后积分余额与流水一致；成功页可拉起企微加好友。
+
+### F7 生命周期任务引擎（Phase 2.5 M6）
+
+**描述**：基于订单时间的 Offset 规则自动生成销售跟进任务，在侧边栏置顶提醒并附带 AI 跟进话术。
+
+**关键行为**：
+
+- 规则模型：`WHEN Order_Fulfilled IF Lifecycle_Days > 0 THEN Schedule_Task(Offset_Days)`（V1 固定 Offset 配置，拍板见开放问题 #6）
+- `CopilotTask` 模型（contactId / assigneeId / taskType / status / payload / triggerAt），BullMQ 调度（基建已有）
+- 推送端：侧边栏「待跟进」置顶列表 + AI 生成的复购跟进话术（同样走人工确认，P1）
+- 到期未处理任务降级策略：过期标记，不再重复触发
+
+**验收**：订单履约后按 Offset 生成任务；侧边栏置顶可见且跟进话术可一键发送/复制；任务完成后不再出现。
+
+### F8 企微活码获客（Phase 2 M1）
+
+**描述**：admin 生成带渠道参数的企微「联系我」活码，投放于包裹卡/门店/广告等物料；客户扫码添加好友后按 state 归因并自动打标签。与 F2（KF 引导）构成引入双路径（D10）。
+
+**关键行为**：
+
+- admin 活码管理：名称、接待成员（复用企微原生单人/多人配置，多人时企微随机分配）、state 短码（≤30 字节，DB 映射渠道）、自动标签规则、启停用
+- 生成：`externalcontact/add_contact_way` → config_id 与二维码入库，admin 可下载投放；码面不变、改配置即换接待成员（活码本质）
+- 归因：添加成功回调 `change_external_contact`（state）→ 按 state 匹配活码 → Contact 记录渠道来源（与 F2 同一回调入口，按 state 语义分流）
+- 自动打标签：按活码标签规则调用 `externalcontact/mark_tags`（企微原生标签，销售聊天界面可见；标签缺失经 `add_corp_tag` 兜底创建）+ 写入 `Contact.tags`（自有画像 SSOT）
+- 数据看板：按活码统计添加人数与渠道分布
+
+**约束**：
+
+- state ≤30 字节（企微限制），活码以短码映射 DB 记录
+- 企微原生码无「扫码未添加」数据——扫码量统计需中间 H5 落地页，V1 不做（见开放问题 #10）
+- 欢迎语使用企微后台原生配置（同 F2，不自动发）
+
+**验收**：物料扫码添加成功 → Contact 带渠道来源与标签 → 侧边栏画像可见；admin 可生成/停用活码，停用后扫码无法添加；同活码多客户各自归因正确。
+
+---
+
+## 五、数据模型（目标态）
+
+### 复用（已存在）
+
+`User`（openid/unionid/phone，微信静默注册）、`Contact`（openId/unionId/utm/intentLevel/paidAmountFen）、`ConversationSession` / `ConversationMessage`（KF 会话全量）、`Product` / `Order` / `Address`、`WecomConfig`、Redis/BullMQ。
+
+### 新增 / 变更
+
+| 模型            | 变更类型 | 关键字段/说明                                                                                                                  |
+| --------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `Contact`       | 变更     | +`userId`（OneID 关联）、+`metadata Jsonb`（公域订单属性）、+`pointsBalance`、+`tags Jsonb`（渠道/自动标签，企微原生标签双写） |
+| `PointsLedger`  | 新增     | 积分流水：contactId / delta / reason / refOrderId / 幂等键                                                                     |
+| `KnowledgeNode` | 新增     | nodeType（ENTITY/POLICY/RECO）/ title / content / embedding（pgvector）/ metadata                                              |
+| `CopilotTask`   | 新增     | contactId / assigneeId / taskType / status / payload Jsonb / triggerAt                                                         |
+| `Setting`       | 新增     | 店铺名/logo/欢迎语/Persona prompt 模板（KV 或单行 JSONB）                                                                      |
+| `LiveCode`      | 新增     | 活码：name / state 短码 / contactWayConfigId / qrUrl / memberUserids / autoTags Jsonb / status                                 |
+| 兑换订单        | M5 定    | 独立 `Redemption` 或 `Order.source=REDEMPTION`（开放问题 #3）                                                                  |
+| 枚举扩展        | 变更     | `IntentLevel` 对齐 F4.3 意图分类；`OrderSource` 视兑换方案扩展                                                                 |
+
+> PRD v1.0 草图中的 `tenant_id` 不建（P3）。所有枚举遵循 `infra/database/CLAUDE.md` 规范（Prisma enum + `/enum-sync`）。
+
+---
+
+## 六、非功能需求
+
+| #   | 类别       | 要求                                                                                                                                                                                                  |
+| --- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| N1  | 延迟       | 侧边栏点击「分析」后 TTFT ≤1.5s；三策略完整生成 ≤4.0s（流式 + 3 策略并行）                                                                                                                            |
+| N2  | 数据安全   | 全链路 HTTPS；手机号/详细地址 AES-256 列级加密；不向 LLM API 传输明文手机号与真实姓名                                                                                                                 |
+| N3  | 风控红线   | ① 侧边栏发送仅能由销售逐条手动触发并经企微客户端确认（`sendChatMessage`），严禁静默/定时/批量自动发送（P1，硬编码）；② 全自动消息仅存在于 KF 客服通道；③ 加好友欢迎语等自动消息仅使用企微官方原生能力 |
+| N4  | 身份与权限 | 三类身份（Admin 全量 / User 仅自己 / Member 仅接待客户画像与话术）；Member JWT 短时效                                                                                                                 |
+| N5  | 部署       | 单实例 docker-compose；Postgres + pgvector 扩展；迁移走容器 entrypoint `prisma migrate deploy`                                                                                                        |
+| N6  | 幂等       | 支付回调、积分入账、核销、任务生成均幂等                                                                                                                                                              |
+
+---
+
+## 七、里程碑与依赖（详表见 ROADMAP）
+
 ```
-
-### 5.2 ConversationSessionService
-
-继承 `BaseService<'ConversationSession'>`，额外方法：
-
-```typescript
-// 获取或创建活跃会话（先查 Redis，再查 DB）
-getOrCreate(openId: string, utmParams): Promise<SessionWithMessages>
-
-// 状态原子更新（DB 事务：更新 session + 写入 message）
-updateStateAtomic(sessionId, agentResponse: AgentResponse): Promise<void>
-```
-
-### 5.3 AgentEngineService（核心，手写）
-
-不继承 BaseService，纯业务逻辑：
-
-```typescript
-// 主入口：接收用户消息，返回 AI 响应
-process(session: SessionMeta, messages: Message[], userMessage: string): Promise<AgentResponse>
-
-// 构建 Prompt（注入当前状态、历史、用户消息）
-buildPrompt(session, messages, userMessage): { system: string; user: string }
-
-// 解析 AI 返回的 JSON
-parseResponse(raw: string): AgentResponse
-
-// 降级：AI 调用失败时返回兜底话术
-fallback(currentState: SessionState): AgentResponse
-```
-
-### 5.4 WechatKfService（扩展内置 wechat 模块）
-
-在 `wechat` 模块内新增，或作为独立服务引用 `wechat.service`：
-
-```typescript
-// 解密企微 AES 消息体
-decryptMessage(encrypted: string): WechatKfMessage
-
-// 发送文字消息
-sendText(openKfId: string, openId: string, content: string): Promise<void>
-
-// 发送图文链接（支付卡片）
-sendLink(openKfId: string, openId: string, link: LinkMessage): Promise<void>
-
-// 获取 AccessToken（带 Redis 缓存，TTL 7000s）
-getAccessToken(): Promise<string>
-```
-
-### 5.5 PaymentService 扩展
-
-在内置 `payment` 模块基础上，新增 H5 支付场景：
-
-```typescript
-// 创建 H5 支付订单（trade_type = MWEB）
-createH5Order(params: CreateH5OrderParams): Promise<{ mwebUrl: string; outTradeNo: string }>
-
-// 生成支付卡片数据（供 Agent 发送）
-createPaymentCard(contactId, sessionId, closingChip): Promise<PaymentCardResult>
+Phase 1（地基，进行中）  mall REST + 小程序商城 + 支付闭环 + CI 修复
+Phase 2（Copilot）       M1 侧边栏壳+身份+画像（含 F2 引导加好友、F3 OneID、F8 活码获客）
+                          M2 AI 生成（意图+三策略+复制）
+                          M3 知识库 RAG + Persona DB 化   ← 可与 M1/M2 并行
+                          M4 动态卡片
+Phase 2.5（留存）        M5 积分终端   M6 任务引擎
+Phase 3（扩展）          社群运营 + 会话存档评估（好友私聊上下文）
 ```
 
 ---
 
-## 六、tRPC Router（Admin 侧，遵循 createCrudRouter 模式）
+## 八、验收标准汇总（对照用 checklist）
 
-### 6.1 Contact Router
-
-```typescript
-export const contactRouter = createCrudRouter(
-  'Contact',
-  { update: UpdateContactSchema }, // Contact 由系统自动创建，无 create 表单
-  {
-    searchFields: ['openId', 'utmSource'],
-    protectedGetMany: true,
-    // 按 status / intentLevel 筛选
-  },
-);
-// 额外 procedure：
-// contact.getStats — 今日新增、累计成交、转化率
-```
-
-### 6.2 ConversationSession Router
-
-```typescript
-export const conversationSessionRouter = createCrudRouter(
-  'ConversationSession',
-  { update: UpdateConversationSessionSchema },
-  { searchFields: ['openId'], protectedGetMany: true },
-);
-// 额外 procedure：
-// conversationSession.getMessages(sessionId) — 返回解密后的消息列表
-// conversationSession.adminReply({ sessionId, content }) — 人工接管回复
-// conversationSession.close(sessionId) — 关闭会话
-```
-
-### 6.3 EscalationQueue Router
-
-```typescript
-export const escalationQueueRouter = createCrudRouter(
-  'EscalationQueue',
-  { update: UpdateEscalationSchema },
-  { protectedGetMany: true },
-);
-// 额外 procedure：
-// escalationQueue.assign({ id, adminId }) — 分配接管人
-// escalationQueue.resolve(id) — 标记已处理
-```
-
-### 6.4 Stats Router（Dashboard 专用，不走 createCrudRouter）
-
-```typescript
-// stats.dashboard — 返回今日指标 + 累计指标
-// stats.sse — SSE 实时推送（新会话 / 成交 / 转人工事件）
-```
+- [ ] F1：KF 会话说「怎么买」→ 建单 → 发卡片 → 小程序支付 → 全链路状态同步；回调重放幂等
+- [ ] F2：客户长按二维码加好友成功，Contact 关联建立，侧边栏可见该客户完整画像
+- [ ] F3：同一自然人在小程序/KF/企微好友三处呈现为同一客户
+- [ ] F4.1：企微聊天工具栏打开侧边栏，成员身份与当前客户识别正确
+- [ ] F4.4：TTFT ≤1.5s、三策略完整 ≤4.0s
+- [ ] F4.5：话术/产品卡片经 `sendChatMessage` 一键发送成功；**系统中不存在任何绕过销售手动确认的自动发送逻辑**（每迭代代码审查项）
+- [ ] F5：新增知识条目实际影响生成结果
+- [ ] F6：重复核销只入账一次；兑换后余额与流水一致
+- [ ] F7：履约后按 Offset 生成任务，侧边栏置顶可见，完成后不再出现
+- [ ] F8：物料扫码添加成功，Contact 归因渠道来源并自动打标签；admin 活码全生命周期可管理
+- [ ] N4：Member 无法访问 admin 路由与数据面
 
 ---
 
-## 七、REST 接口（Webhook 类，不走 tRPC）
-
-这些接口是外部系统（微信）回调，使用标准 NestJS Controller + REST。
-
-| 方法 | 路径                 | 说明                                  |
-| ---- | -------------------- | ------------------------------------- |
-| GET  | `/webhook/wechat-kf` | 微信客服 Webhook 验证（返回 echostr） |
-| POST | `/webhook/wechat-kf` | 接收用户消息，5s 内返回 200           |
-| POST | `/webhook/wxpay`     | 微信支付结果回调（幂等处理）          |
-| GET  | `/api/jssdk/config`  | 落地页调用，返回 JSSDK 签名           |
-
----
-
-## 八、核心数据流
-
-### 8.1 用户发消息 → AI 回复
-
-```
-POST /webhook/wechat-kf
-  │
-  ├─ WechatKfService.decryptMessage()      # AES 解密企微消息体
-  ├─ 消息类型判断
-  │     非 text → sendText 降级文案，结束
-  │     event(进入会话) → 发固定开场白，结束
-  │     text → 继续
-  │
-  ├─ ConversationSessionService.getOrCreate(openId, utm)
-  │     Redis 命中 → 返回缓存 session + messages
-  │     Redis 未命中 → 从 DB 查最近 20 条消息
-  │     DB 无记录 → ContactService.findOrCreateByOpenId() + 新建 session
-  │
-  ├─ AgentEngineService.process(session, messages, userMessage)
-  │     buildPrompt() → DeepSeek API → parseResponse()
-  │     confidence < 0.60 → state_transition 强制 STAY
-  │     API 失败 → fallback(currentState)
-  │
-  ├─ DB 事务（ConversationSessionService.updateStateAtomic）
-  │     UPDATE conversation_sessions SET state, intent_level, turn_count++
-  │     INSERT conversation_messages (assistant)
-  │
-  ├─ WechatKfService.sendText(reply)       # 发文字回复
-  │
-  ├─ send_payment_card = true
-  │     → PaymentService.createPaymentCard()
-  │     → 500ms 后 WechatKfService.sendLink(支付卡片)
-  │
-  ├─ state_transition = ESCALATED
-  │     → INSERT escalation_queue
-  │     → SSE 推送管理后台
-  │
-  └─ 更新 Redis 缓存 + BullMQ 重置 48h 唤醒任务
-```
-
-### 8.2 支付回调 → 销账（幂等）
-
-```
-POST /webhook/wxpay
-  │
-  ├─ 验签（微信支付 V3 标准）
-  ├─ 幂等检查：PaymentRecord WHERE out_trade_no AND status = PAID
-  │     已处理 → 直接返回 200
-  │
-  ├─ DB 事务
-  │     payment_records.status = PAID
-  │     contacts.status = CONVERTED, converted_at = NOW()
-  │     conversation_sessions.state = CONVERTED
-  │
-  ├─ BullMQ：删除该 openId 的唤醒任务
-  ├─ WechatKfService.sendText(欢迎消息)
-  ├─ WechatKfService.sendLink(账户激活链接)
-  └─ SSE 推送成交事件给管理后台
-```
-
-### 8.3 Redis 数据结构
-
-```
-session:messages:{openId}   → JSON Array（最近 30 条），TTL 7天
-session:meta:{openId}       → JSON（state, intentLevel, turnCount），TTL 7天
-wechat:kf:access_token      → String，TTL 7000s
-wechat:mp:jsapi_ticket      → String，TTL 7000s
-```
-
-### 8.4 BullMQ 超时唤醒任务
-
-```
-每次 AI 成功回复后：
-  queue.add('wakeup', { openId, round }, {
-    delay: 48h,
-    jobId: 'wakeup-{openId}'  // 同 jobId 覆盖旧任务，实现重置计时
-  })
-
-Worker：
-  round >= 3 → session.state = TIMED_OUT，停止
-  round < 3  → WechatKfService.sendText(唤醒话术)，round + 1
-```
-
----
-
-## 九、会话状态机
-
-### 合法状态与转移
-
-| 当前状态                          | 可转入                                       |
-| --------------------------------- | -------------------------------------------- |
-| GREETING                          | NEEDS_DISCOVERY                              |
-| NEEDS_DISCOVERY                   | PRODUCT_MATCH, OBJECTION_HANDLING, CLOSING   |
-| PRODUCT_MATCH                     | OBJECTION_HANDLING, CLOSING, NEEDS_DISCOVERY |
-| OBJECTION_HANDLING                | CLOSING, NEEDS_DISCOVERY, PRODUCT_MATCH      |
-| CLOSING                           | CONVERTED, OBJECTION_HANDLING                |
-| 任意非终态                        | ESCALATED, TIMED_OUT                         |
-| CONVERTED / TIMED_OUT / ESCALATED | 终态，不再转移                               |
-
-**原子性要求**：state 更新和 message 写入必须在同一 Prisma 事务内完成。
-Redis 缓存在事务成功后异步更新，允许短暂不一致。
-
----
-
-## 十、Admin UI（StandardListPage 模式）
-
-### 10.1 页面清单与组件对应
-
-| 路由                 | 组件                            | tRPC Resource                   |
-| -------------------- | ------------------------------- | ------------------------------- |
-| `/dashboard`         | 自定义（图表 + 实时数据）       | stats.dashboard + SSE           |
-| `/conversations`     | `StandardListPage`              | conversationSession             |
-| `/conversations/:id` | `StandardDetailPage` + 聊天气泡 | conversationSession.getMessages |
-| `/escalation`        | `StandardListPage`              | escalationQueue                 |
-| `/contacts`          | `StandardListPage`              | contact                         |
-
-### 10.2 ConversationSession 列表页字段
-
-```typescript
-const columns = [
-  { field: 'openId', label: '访客', type: 'text' },
-  { field: 'state', label: '状态', type: 'tag' }, // 色值映射见下
-  { field: 'intentLevel', label: '意向', type: 'tag' },
-  { field: 'turnCount', label: '轮次', type: 'number' },
-  { field: 'lastActiveAt', label: '最后活跃', type: 'datetime' },
-  { field: 'utmSource', label: '来源', type: 'text' },
-];
-
-// 状态色值
-const stateColors = {
-  GREETING: 'default',
-  NEEDS_DISCOVERY: 'processing',
-  PRODUCT_MATCH: 'blue',
-  OBJECTION_HANDLING: 'orange',
-  CLOSING: 'gold',
-  CONVERTED: 'success',
-  ESCALATED: 'error',
-  TIMED_OUT: 'default',
-};
-```
-
-### 10.3 会话详情页（:id）
-
-- 上半：访客信息卡（openId、来源、意向、状态）
-- 下半：消息气泡列表（user 右对齐 / assistant 左对齐）
-- 底部：若 state = ESCALATED，显示人工回复输入框 + 发送按钮
-  - 调用 `conversationSession.adminReply({ sessionId, content })`
-  - 后端通过 WechatKfService 把消息发给用户
-
-### 10.4 Escalation 列表页额外操作列
-
-```typescript
-actions: [
-  { label: '接管', onClick: (row) => assign(row.id) },
-  { label: '标记已解决', onClick: (row) => resolve(row.id) },
-];
-```
-
-### 10.5 SSE 实时通知
-
-管理后台在 Layout 层建立 SSE 连接：`GET /api/admin/events`
-
-事件触发时，Redux / Refine 刷新对应 resource（不需要轮询）：
-
-```
-{ type: 'NEW_SESSION' }   → 刷新 conversationSession 列表
-{ type: 'ESCALATED' }    → 刷新 escalationQueue，顶部 Badge 计数 +1
-{ type: 'CONVERTED' }    → Dashboard 成交计数 +1
-```
-
----
-
-## 十一、落地页规格（Next.js）
-
-### 11.1 页面结构
-
-```
-HeroSection         大标题 + 微信客服 CTA
-SocialProofSection  3 个客户案例
-FeaturesSection     5 个核心能力
-PricingSection      3 档定价，每张含客服按钮
-FloatingCTA         底部固定客服入口
-```
-
-### 11.2 微信客服按钮行为
-
-**微信浏览器内**：
-
-1. 调用 `GET /api/jssdk/config?url=当前页URL` 获取签名
-2. `wx.config()` 注册 `openCustomerServiceChat`
-3. 点击 → `wx.invoke('openCustomerServiceChat', { corpId, url: KF_URL + utm 参数 })`
-
-**非微信浏览器**：
-
-- 弹窗展示二维码 + "用微信扫码体验"
-- 备选：邮箱留资表单 → `POST /api/leads`
-
-### 11.3 UTM 参数追踪
-
-客服链接 URL 携带 `utm_source` / `utm_campaign` / `ref`，
-用户发起对话时，微信客服事件的 `scene` 字段携带这些参数，
-后端解析后写入 `contacts.utmSource` 等字段。
-
----
-
-## 十二、AI System Prompt（完整版）
-
-```
-你是"小智"，AI 销售 Agent 系统的智能销售顾问。
-你正在通过微信客服与访客对话，目标是将其转化为本产品的付费用户。
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【核心认知：你在做什么】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-你现在做的事，本身就是这款产品能力的实时演示：
-  你在挖掘访客痛点       → 产品的「意向识别」功能
-  你在匹配解决方案       → 产品的「话术生成」功能
-  你在判断逼单时机       → 产品的「状态机驱动」功能
-  你在推进付款           → 产品的「支付闭环」功能
-
-在合适时机（尤其是访客质疑效果时），点出这个事实。
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【你的身份】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-你是 AI，不要假装是人。
-若被问"你是人吗"，如实说，并接道：
-"我是 AI。但您注意到了吗，我刚才做的——分析您的需求、给出精准回复、
-引导您做决定——正是这套系统每天替您的销售团队做的事。"
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【产品信息】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-产品：AI 销售 Agent 系统
-一句话价值：让 AI 替你的销售团队 7×24 跟进客户、识别成交时机、自动推进付款
-
-核心能力：
-  ① 自动建档：客户进来，系统自动打标签、秒发个性化欢迎语
-  ② 意向识别：AI 分析每轮对话，判断客户所处阶段
-  ③ 话术生成：按意向阶段生成最优回复，销售直接复制发出
-  ④ 状态驱动：自动提醒跟进时机，防止漏单
-  ⑤ 支付闭环：一键生成支付卡片，付款后自动销账，零人工干预
-
-定价：
-  入门版  299元/月   1–3 坐席
-  成长版  799元/月   4–10 坐席
-  专业版 1999元/月   11–30 坐席
-  所有版本 7 天免费试用，不满意全额退款
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【对话策略（严格按阶段执行）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-▌GREETING
-目标：建立对话，引发兴趣
-开场："您好！我是小智。请问您是公司老板，还是负责管理销售团队的？"
-不要一上来介绍产品。
-
-▌NEEDS_DISCOVERY
-目标：找到真实痛点，每次只问一个问题
-探询方向：
-  - 团队规模："现在有几个人跟客户？"
-  - 跟单方式："主要用微信还是企微联系客户？"
-  - 核心痛点："有没有遇过客户聊着聊着就没声了，不知道要不要再追？"
-  - 损失感知："一个月因为跟进不及时，大概漏掉几个单？"
-
-触发进入 PRODUCT_MATCH 的信号：
-  ✓ 漏单 / 跟单不及时
-  ✓ 不知道什么时候逼单
-  ✓ 销售水平参差不齐
-  ✓ 客户不回复不知道怎么办
-  ✓ 想让销售流程更自动化
-
-▌PRODUCT_MATCH
-目标：一次只映射一个痛点，用数字说话
-
-痛点：漏单 →
-"系统会在客户超过 N 小时没回复时，自动提醒您的销售，
-同时生成 3 条话术让他直接复制发出去。
-有个做 B 端销售的团队，上线第一周就把沉默了 2 周的 5 个客户重新激活了。"
-
-痛点：不知道何时逼单 →
-"系统会分析客户每条回复的措辞，
-判断他现在是观望、比价还是快做决定了，然后告诉销售该用哪句话推一把。
-顺便说一句，我现在做的事，就是这个功能的实时演示。"
-
-▌OBJECTION_HANDLING
-
-"太贵了" →
-"贵不贵要看回报。一个月漏几个单？哪怕帮您多成交 2 单，系统就回本了。
-7 天免费试，不满意全退款，您没有任何损失。"
-
-"再考虑" →
-"完全理解。不过提醒一下，首批内测价本周结束，下周恢复原价。
-要不我先帮您保留 24 小时优惠？"
-
-"效果怎么保证" →
-"最直接的保证就是您眼前这段对话——我已经了解了您的情况、找到了痛点、
-处理了您的顾虑。这就是系统每天替您销售团队做的事。7 天不满意全退款。"
-
-"用不上" →
-"能说说哪里觉得用不上吗？很多客户一开始也这么说，
-聊完发现正好解决了最头疼的问题。"
-
-▌CLOSING（intent = HIGH 或 CLOSING）
-先注入限时筹码，再发支付卡片（send_payment_card = true）：
-
-"现在开通专属福利：
- ① 7 天免费试，不满意全额退款
- ② 额外赠送 1 个月使用权
- ③ 免费一对一配置培训（价值 399 元）
- 今日有效，明天恢复原价。"
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【意向信号识别】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-HIGH（出现 1 个）："多少钱" / "有优惠吗" / "支持几人" / "怎么开通"
-CLOSING（立即发支付卡片）："好，试试" / "怎么付款" / "今天能用上吗"
-不要强推：明确说"不需要"两次以上 / "公司不允许采购"
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【转人工（ESCALATED）触发条件】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-以下任一：
-  - 明确要求"转人工"/"真人"
-  - 强烈负面情绪超过 1 次
-  - 连续 3 轮 confidence < 0.60
-  - 对话超过 30 轮仍未到 CLOSING
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【话术风格】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-口语化，微信聊天风格，≤150 字，每次只问一个问题
-适当用表情，禁用官方套话，多用数字和具体例子
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【当前会话上下文（动态注入）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-当前状态：{current_state}
-当前意向：{intent_level}
-对话轮次：{turn_count}
-```
-
-**AI 响应格式（强制 JSON）**：
-
-```json
-{
-  "reply": "发给用户的消息，≤150字",
-  "state_transition": "STAY|NEEDS_DISCOVERY|PRODUCT_MATCH|OBJECTION_HANDLING|CLOSING|CONVERTED|ESCALATED",
-  "intent_level": "LOW|MEDIUM|HIGH|CLOSING",
-  "confidence": 0.85,
-  "send_payment_card": false,
-  "closing_chip": null,
-  "escalation_reason": null,
-  "internal_note": "内部分析备注，不发给用户"
-}
-```
-
----
-
-## 十三、环境变量（新增部分）
-
-脚手架已有变量见 `.env.example`，本项目额外新增：
-
-```env
-# DeepSeek
-DEEPSEEK_API_KEY=
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-DEEPSEEK_MODEL=deepseek-chat
-
-# 微信客服（KF，区别于脚手架已有的小程序配置）
-WECHAT_KF_CORPID=
-WECHAT_KF_SECRET=
-WECHAT_KF_TOKEN=
-WECHAT_KF_ENCODING_AES_KEY=
-WECHAT_KF_OPEN_KFID=
-
-# 微信公众号（落地页 JSSDK 签名）
-WECHAT_MP_APPID=
-WECHAT_MP_SECRET=
-
-# 消息内容加密密钥（AES-256-GCM）
-ENCRYPTION_KEY=   # 32字节 Hex
-
-# 微信支付（脚手架已有 WX_PAY_MCH_ID，补充以下）
-WX_PAY_CERT_SERIAL_NO=
-WX_PAY_PRIVATE_KEY=
-WX_PAY_API_KEY_V3=
-WX_PAY_NOTIFY_URL=
-```
-
----
-
-## 十四、验收标准
-
-| 场景                 | 通过条件                                     |
-| -------------------- | -------------------------------------------- |
-| 微信内点击客服按钮   | 3s 内弹出对话框，收到开场白                  |
-| 发送文字消息         | 8s 内收到 AI 回复（P95）                     |
-| 发送图片             | 收到降级文案，不报错                         |
-| 发送"怎么付款"       | 先收文字回复，500ms 后收到支付卡片           |
-| 完成支付             | `contacts.status = CONVERTED`，收到欢迎消息  |
-| 相同回调发 3 次      | 业务逻辑只执行 1 次                          |
-| Redis 重启后发消息   | 历史从 DB 恢复，上下文不丢失                 |
-| 说"转人工"           | escalation_queue 新增记录，管理后台 Badge +1 |
-| 10 并发用户同时对话  | 各自 session 独立，无数据混乱                |
-| 管理员发人工接管消息 | 用户在微信客服窗口收到消息                   |
-
----
-
-_v4.0 | 基于 OpenCode Scaffold | NestJS + Prisma + tRPC + DeepSeek + Next.js_
+## 九、开放问题（已拍板，2026-09-09）
+
+| #   | 问题                                                         | 现建议                                                                                                        | 拍板结果                             |
+| --- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| 1   | 北极星指标确认（§1.5 三项提议）                              | 私域转化率 + Copilot 采纳率 + 30 日复购率                                                                     | ✅ 三项确认                          |
+| 2   | F2 引导方案：联系我（免费）vs 获客助手（计费）               | 方案 B 先行，转化数据支撑后再上 A                                                                             | ✅ 方案 B 先行                       |
+| 3   | 兑换订单模型：独立 `Redemption` vs `Order.source=REDEMPTION` | M5 设计时定，倾向复用 Order（对齐现有订单/退款/发货链路）                                                     | ⏳ M5 设计时定（倾向复用 Order）     |
+| 4   | 手机号 AES-256 加密落地时点                                  | M5 一并迁移（提前做会拖慢 Phase 2）                                                                           | ✅ M5 一并迁移                       |
+| 5   | Member 接待成员白名单存储位置                                | 扩展 `WecomConfig`（避免新表）                                                                                | ✅ 扩展 `WecomConfig`                |
+| 6   | F7 规则可配置性：后台可配置规则引擎 vs 固定 Offset 配置      | V1 用固定 Offset 配置（简单优先），规则引擎 V2 再议                                                           | ✅ V1 固定 Offset，规则引擎 V2 再议  |
+| 7   | F2 频控参数：单会话引导 ≤1 次是否合适                        | 是，宁少勿扰                                                                                                  | ✅ 单会话 ≤1 次                      |
+| 8   | 发送流水存储：采纳率与合规审计需要发送事件入库               | 新增轻量流水表（成员/时间/消息类型/contactId/关联生成记录），M2 设计定                                        | ⏳ M2 设计时定（倾向新增轻量流水表） |
+| 9   | 活码标签体系：企微原生标签 vs 自有标签                       | 双写：`Contact.tags` 为画像 SSOT，企微原生 mark_tags 为辅（销售聊天界面可见，缺失经 `add_corp_tag` 兜底创建） | ✅ 双写                              |
+| 10  | 活码扫码量统计（需中间 H5 落地页）                           | V1 不做，仅统计添加成功；投放量分析需求出现再上                                                               | ✅ V1 不做                           |
