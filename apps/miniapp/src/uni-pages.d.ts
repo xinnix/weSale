@@ -7,41 +7,34 @@ type _LocationUrl =
   "/pages/index" |
   "/pages/hi" |
   "/pages/login" |
+  "/pages/address/edit" |
+  "/pages/address/list" |
   "/pages/agents/chat" |
   "/pages/agents/index" |
   "/pages/agreement/privacy-policy" |
   "/pages/agreement/user-agreement" |
+  "/pages/order/list" |
+  "/pages/order/result" |
+  "/pages/product/detail" |
   "/pages/profile/index" |
-  "/pages/coupon/detail" |
-  "/pages/coupon/list" |
-  "/pages/handler/index" |
-  "/pages/handler/records" |
-  "/pages/merchant/detail" |
-  "/pages/merchant/list" |
-  "/pages/news/detail" |
-  "/pages/qrcode/index" |
-  "/pages/redemption/confirm" |
-  "/pages/scan/index" |
-  "/pages/wallet/index";
+  "/pages/order/confirm/index";
 
 interface NavigateToOptions {
-  url: _LocationUrl;
+  url: _LocationUrl
 }
 interface RedirectToOptions extends NavigateToOptions {}
 
-interface SwitchTabOptions {
-  
-}
+interface SwitchTabOptions {}
 
-type ReLaunchOptions = NavigateToOptions | SwitchTabOptions;
+type ReLaunchOptions = NavigateToOptions | SwitchTabOptions
 
 declare interface Uni {
-  navigateTo(options: UniNamespace.NavigateToOptions & NavigateToOptions): void;
-  redirectTo(options: UniNamespace.RedirectToOptions & RedirectToOptions): void;
-  switchTab(options: UniNamespace.SwitchTabOptions & SwitchTabOptions): void;
-  reLaunch(options: UniNamespace.ReLaunchOptions & ReLaunchOptions): void;
+  navigateTo(options: UniNamespace.NavigateToOptions & NavigateToOptions): void
+  redirectTo(options: UniNamespace.RedirectToOptions & RedirectToOptions): void
+  switchTab(options: UniNamespace.SwitchTabOptions & SwitchTabOptions): void
+  reLaunch(options: UniNamespace.ReLaunchOptions & ReLaunchOptions): void
 }
 
-declare module "virtual:uni-pages" {
-  export type LocationUrl = _LocationUrl;
+declare module 'virtual:uni-pages' {
+  export type LocationUrl = _LocationUrl
 }

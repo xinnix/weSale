@@ -13,8 +13,7 @@
       "@mini-types/alipay",
       "miniprogram-api-typings",
       "@uni-helper/uni-types",
-      "@uni-helper/vite-plugin-uni-pages",
-      "vitest-environment-uniapp/types"
+      "@uni-helper/vite-plugin-uni-pages"
     ],
     "sourceMap": true
   },

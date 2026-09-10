@@ -36,6 +36,18 @@ export const API_ENDPOINTS = {
   agentChat: (id: string) => `/agents/${id}/user-chat`,
   agentConversations: (id: string) => `/agents/${id}/conversations`,
   agentMessages: (id: string, conversationId: string) => `/agents/${id}/messages/${conversationId}`,
+
+  // 商品（公开端点，复用 products 模块）
+  productsActive: '/products/active',
+  productDetail: (slug: string) => `/products/${slug}`,
+
+  // 商城（地址/订单/支付）
+  mallAddresses: '/mall/addresses',
+  mallAddressDetail: (id: string) => `/mall/addresses/${id}`,
+  mallOrders: '/mall/orders',
+  mallOrderDetail: (orderNo: string) => `/mall/orders/${orderNo}`,
+  mallOrderClaim: (orderNo: string) => `/mall/orders/${orderNo}/claim`,
+  mallOrderPrepay: (orderNo: string) => `/mall/orders/${orderNo}/prepay`,
 } as const
 
 export default API_CONFIG

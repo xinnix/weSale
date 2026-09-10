@@ -1,10 +1,32 @@
 <script setup lang="ts">
+import { authApi } from '@/api/auth'
 import GlobalLoading from '@/components/GlobalLoading.vue'
 import { useLoading } from '@/stores/loading'
 
 const { state: loadingState } = useLoading()
 
-onLaunch(() => {})
+onLaunch(() => {
+  silentWechatLogin()
+})
+
+/**
+ * 静默微信登录：KF 订单卡片/商城直购链路的前置（微信 openid 静默注册）。
+ * 非微信平台或失败时静默跳过，由页面各自的登录引导兜底。
+ */
+async function silentWechatLogin() {
+  if (uni.getStorageSync('token')) return
+  try {
+    const codeRes = await uni.login({ provider: 'weixin' })
+    if (!codeRes.code) return
+
+    const res = await authApi.wechatLogin(codeRes.code)
+    uni.setStorageSync('token', res.data.accessToken)
+    uni.setStorageSync('refreshToken', res.data.refreshToken)
+    uni.setStorageSync('userInfo', res.data.user)
+  } catch {
+    // 静默失败不提示，保持未登录态
+  }
+}
 </script>
 
 <template>

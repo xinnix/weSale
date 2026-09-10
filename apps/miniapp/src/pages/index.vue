@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { onShow } from '@dcloudio/uni-app'
+import type { MallProduct } from '@/api/mall'
+import { onPullDownRefresh, onShow } from '@dcloudio/uni-app'
 import { onMounted, ref } from 'vue'
 import { authApi } from '@/api/auth'
+import { formatPrice, productApi } from '@/api/mall'
 
 definePage({
   type: 'home',
@@ -14,6 +16,8 @@ definePage({
 const statusBarHeight = ref(0)
 const isLoggedIn = ref(false)
 const userInfo = ref<any>(null)
+const products = ref<MallProduct[]>([])
+const loading = ref(true)
 
 onMounted(() => {
   const systemInfo = uni.getSystemInfoSync()
@@ -24,7 +28,7 @@ onShow(async () => {
   const token = uni.getStorageSync('token')
   isLoggedIn.value = !!token
 
-  if (token) {
+  if (token && !userInfo.value) {
     try {
       const res = await authApi.getProfile()
       if (res.data) {
@@ -35,7 +39,27 @@ onShow(async () => {
       console.error('获取用户信息失败:', error)
     }
   }
+
+  await loadProducts()
 })
+
+onPullDownRefresh(async () => {
+  await loadProducts()
+  uni.stopPullDownRefresh()
+})
+
+async function loadProducts() {
+  loading.value = true
+  try {
+    const res = await productApi.listActive()
+    products.value = res.data || []
+  } catch (error) {
+    console.error('加载商品失败:', error)
+    uni.showToast({ title: '商品加载失败', icon: 'none' })
+  } finally {
+    loading.value = false
+  }
+}
 
 function goToLogin() {
   uni.navigateTo({ url: '/pages/login' })
@@ -44,64 +68,83 @@ function goToLogin() {
 function goToProfile() {
   uni.navigateTo({ url: '/pages/profile/index' })
 }
+
+function goToOrders() {
+  uni.navigateTo({ url: '/pages/order/list' })
+}
+
+function goToDetail(product: MallProduct) {
+  uni.navigateTo({ url: `/pages/product/detail?slug=${product.slug}` })
+}
 </script>
 
 <template>
   <view class="page-root">
-    <!-- TopAppBar -->
+    <!-- 顶栏 -->
     <view
       class="top-bar-bg sticky top-0 z-50 w-full flex items-center justify-between px-4 py-3"
       :style="{ paddingTop: `${statusBarHeight}px` }"
     >
       <image class="logo-image" src="/static/logo.png" mode="aspectFit" />
-      <view v-if="isLoggedIn" class="flex items-center gap-2" @click="goToProfile">
-        <text class="text-sm text-on-surface font-medium">
-          {{ userInfo?.username || '用户' }}
-        </text>
-      </view>
-      <view v-else @click="goToLogin">
-        <text class="text-sm text-primary font-bold"> 登录 </text>
-      </view>
-    </view>
-
-    <!-- Welcome Section -->
-    <view class="px-4 py-8">
-      <view class="welcome-card rounded-xl p-6 shadow-sm">
-        <text class="mb-2 block text-2xl text-on-surface font-bold"> OpenCode Scaffold </text>
-        <text class="block text-sm text-on-surface-variant"> 全栈管理系统脚手架，开箱即用 </text>
-        <view class="mt-4 flex gap-2">
-          <view v-if="!isLoggedIn" class="rounded-lg bg-primary px-4 py-2" @click="goToLogin">
-            <text class="text-sm text-white font-bold"> 开始使用 </text>
-          </view>
-          <view v-if="isLoggedIn" class="rounded-lg bg-primary px-4 py-2" @click="goToProfile">
-            <text class="text-sm text-white font-bold"> 个人中心 </text>
-          </view>
+      <view class="flex items-center gap-4">
+        <view v-if="isLoggedIn" @tap="goToOrders">
+          <text class="text-sm text-on-surface font-medium"> 我的订单 </text>
+        </view>
+        <view v-if="isLoggedIn" @tap="goToProfile">
+          <text class="text-sm text-on-surface font-medium">
+            {{ userInfo?.username || '用户' }}
+          </text>
+        </view>
+        <view v-else @tap="goToLogin">
+          <text class="text-sm text-primary font-bold"> 登录 </text>
         </view>
       </view>
     </view>
 
-    <!-- Tech Stack -->
-    <view class="px-4">
-      <text class="mb-3 block text-lg text-on-surface font-bold"> 技术栈 </text>
-      <view class="grid grid-cols-2 gap-3">
+    <!-- 商品列表 -->
+    <view class="px-4 pb-8">
+      <view v-if="loading && products.length === 0" class="py-20 text-center">
+        <text class="text-sm text-on-surface-variant"> 加载中... </text>
+      </view>
+
+      <view v-else-if="products.length === 0" class="py-20 text-center">
+        <text class="text-sm text-on-surface-variant"> 暂无商品 </text>
+      </view>
+
+      <view v-else class="grid grid-cols-2 gap-3 pt-3">
         <view
-          v-for="tech in [
-            { name: 'NestJS', desc: '后端 API' },
-            { name: 'tRPC', desc: '类型安全' },
-            { name: 'Prisma', desc: 'ORM' },
-            { name: 'React + Refine', desc: '管理后台' },
-            { name: 'Ant Design', desc: 'UI 组件库' },
-            { name: 'uni-app', desc: '小程序' },
-          ]"
-          :key="tech.name"
-          class="tech-card rounded-lg p-3 shadow-sm"
+          v-for="product in products"
+          :key="product.id"
+          class="product-card overflow-hidden rounded-xl shadow-sm"
+          @tap="goToDetail(product)"
         >
-          <text class="block text-sm text-on-surface font-bold">
-            {{ tech.name }}
-          </text>
-          <text class="text-xs text-on-surface-variant">
-            {{ tech.desc }}
-          </text>
+          <image
+            class="h-320rpx w-full"
+            :src="product.coverImage || '/static/logo.png'"
+            mode="aspectFill"
+          />
+          <view class="p-3">
+            <text class="block text-base text-on-surface font-bold leading-5">
+              {{ product.name }}
+            </text>
+            <text
+              v-if="product.shortDescription"
+              class="line-clamp-1 mt-1 block text-xs text-on-surface-variant"
+            >
+              {{ product.shortDescription }}
+            </text>
+            <view class="mt-2 flex items-baseline gap-2">
+              <text class="text-lg text-primary font-extrabold">
+                ¥{{ formatPrice(product.priceFen) }}
+              </text>
+              <text
+                v-if="product.originalPriceFen"
+                class="text-xs text-on-surface-variant line-through"
+              >
+                ¥{{ formatPrice(product.originalPriceFen) }}
+              </text>
+            </view>
+          </view>
         </view>
       </view>
     </view>
@@ -124,13 +167,8 @@ function goToProfile() {
   height: 80rpx;
 }
 
-.welcome-card {
+.product-card {
   background: rgba(255, 255, 255, 0.95);
-  border: 1rpx solid rgba(189, 200, 209, 0.2);
-}
-
-.tech-card {
-  background: rgba(255, 255, 255, 0.9);
   border: 1rpx solid rgba(189, 200, 209, 0.2);
 }
 </style>
