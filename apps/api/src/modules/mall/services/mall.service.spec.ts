@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { MallService } from './mall.service';
 
 /**
@@ -18,6 +18,8 @@ function createMallService() {
     count: vi.fn(async () => 0),
     findMany: vi.fn(async () => []),
     findFirst: vi.fn(async () => null),
+    findUnique: vi.fn(async () => null),
+    update: vi.fn(async (args: any) => ({ id: args.where.id, ...args.data })),
   };
   const user = {
     findUnique: vi.fn(async () => null),
@@ -191,6 +193,41 @@ describe('MallService 订单', () => {
 
   it('查看他人订单返回 404（数据隔离）', async () => {
     await expect(ctx.service.getOrder('u1', 'WS-OTHER')).rejects.toThrow(NotFoundException);
+  });
+
+  it('claim：PENDING 无主单绑定当前用户，重复领取幂等', async () => {
+    const unclaimed: any = {
+      id: 'o1',
+      orderNo: 'WS1',
+      userId: null,
+      status: 'PENDING',
+      product: {},
+    };
+    ctx.order.findUnique = vi.fn(async () => unclaimed);
+    const update = vi.fn(async () => unclaimed);
+    ctx.order.update = update;
+
+    await ctx.service.claimOrder('u1', 'WS1');
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'o1' }, data: { userId: 'u1' } }),
+    );
+
+    // 第二次：已是本人订单 → 幂等返回，不再 update
+    unclaimed.userId = 'u1';
+    await ctx.service.claimOrder('u1', 'WS1');
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  it('claim：已被他人领取的订单返回 403', async () => {
+    ctx.order.findUnique = vi.fn(async () => ({
+      id: 'o1',
+      orderNo: 'WS1',
+      userId: 'someone-else',
+      status: 'PENDING',
+      product: {},
+    }));
+
+    await expect(ctx.service.claimOrder('u1', 'WS1')).rejects.toThrow(ForbiddenException);
   });
 });
 

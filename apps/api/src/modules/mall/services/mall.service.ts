@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { z } from 'zod';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OrderService } from '../../product/services/order.service';
@@ -152,6 +158,28 @@ export class MallService {
     });
     if (!order) throw new NotFoundException('订单不存在');
     return order;
+  }
+
+  /**
+   * 领取无主订单（KF 卡片落地场景）：KF 会话建的单只有 contactId，
+   * 顾客点卡片进小程序登录后，把 PENDING 无主单绑定到当前用户，
+   * 后续查单/支付走正常归属校验。已被领取的他人订单返回 403。
+   */
+  async claimOrder(userId: string, orderNo: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { orderNo },
+      include: { product: { select: PRODUCT_CARD_SELECT } },
+    });
+    if (!order) throw new NotFoundException('订单不存在');
+
+    if (order.userId === userId) return order;
+    if (order.userId) throw new ForbiddenException('订单已被其他账号领取');
+    if (order.status !== 'PENDING') {
+      throw new BadRequestException(`订单状态为 ${order.status}，无法领取`);
+    }
+
+    await this.prisma.order.update({ where: { id: order.id }, data: { userId } });
+    return { ...order, userId };
   }
 
   // ─── 支付 ────────────────────────────────────────────────────

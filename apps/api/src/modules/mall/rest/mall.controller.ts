@@ -55,6 +55,12 @@ export class MallController {
     return this.mallService.getOrder(userId, orderNo);
   }
 
+  /** KF 卡片落地：PENDING 无主单绑定当前用户（幂等，他人已领返回 403） */
+  @Post('orders/:orderNo/claim')
+  claimOrder(@CurrentUser('id') userId: string, @Param('orderNo') orderNo: string) {
+    return this.mallService.claimOrder(userId, orderNo);
+  }
+
   // ─── 支付 ────────────────────────────────────────────────────
 
   @Post('orders/:orderNo/prepay')
