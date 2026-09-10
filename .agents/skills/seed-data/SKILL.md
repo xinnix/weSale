@@ -4,156 +4,83 @@
 
 ## 概述
 
-由于 Prisma 7.x 和某些 adapter 配置存在兼容性问题，本项目使用纯 SQL 脚本创建假数据，确保稳定性和可靠性。
+项目使用纯 SQL 脚本创建假数据（Prisma 7.x adapter 兼容性问题，绕开 `prisma db seed`）。
+**统一入口是根目录脚本 `scripts/seed-mock.sh`**，按外键依赖顺序执行三份幂等 SQL。
 
 ## 执行命令
 
 ```bash
-/seed-data
+./scripts/seed-mock.sh          # 推荐：一键填充全部 mock 数据
+# 环境变量可覆盖：POSTGRES_CONTAINER / DB_NAME / DB_USER
 ```
+
+或使用 `/seed-data` 触发本 skill，按「执行流程」操作。
 
 ## 执行流程
 
-1. **检查环境**：验证 PostgreSQL 容器是否运行
-2. **执行基础数据**：创建用户、角色、权限等基础数据
-3. **执行业务数据**：创建商户、券模板、订单等业务数据
-4. **验证结果**：统计并显示创建的数据数量
+1. **检查环境**：验证 PostgreSQL 容器是否运行（默认容器名 `postgres`）
+2. **按序执行三份脚本**（外键依赖决定顺序，不可调换）：
+   - `seed-base.sql` → 管理员/角色/权限（admin 登录用）
+   - `seed-kf.sql` → 微信客服链路：访客/会话/消息（Copilot/侧边栏联调用）
+   - `seed-mall.sql` → 商城业务：商品/用户/地址/订单（商城 + 仪表盘用）
+3. **验证结果**：脚本末尾自动打印各表数量
 
-## SQL 脚本位置
+## mock 数据目录（2026-09-09 对齐 weSale 当前 schema）
 
-- `infra/database/prisma/seed-base.sql` - 基础数据脚本
-- `infra/database/prisma/seed-data.sql` - 业务数据脚本
+### seed-base.sql — 管理端
 
-## 创建的数据详情
+- 3 个管理员：superadmin / admin / viewer @example.com，密码 `password123`
+- 3 角色 + 16 权限 + 关联；2 个邮箱注册测试用户（u1/u2）
 
-### 1. 基础数据（seed-base.sql）
+### seed-kf.sql — 微信客服链路（PRD F1/F4 联调用）
 
-**管理员账户（3个）**
+- 4 位访客（`mock_contact_0001..0004`）：1 位已转化（CONVERTED + paid_amount_fen）、1 位已发卡待付、1 位送礼咨询中、1 位闲逛
+- 4 个会话（session_key 幂等）：CONVERTED / CLOSING / PRODUCT_MATCH / NEEDS_DISCOVERY 各一
+- 21 条消息（kf_msg_id 幂等）：含价格异议处理、`send_payment_card` 逼单卡片、SYSTEM_NOTE 转化记录等真实销售对话
 
-- superadmin@example.com（超级管理员）
-- admin@example.com（管理员）
-- viewer@example.com（访客）
-- 密码：全部为 `password123`
+### seed-mall.sql — 商城业务
 
-**小程序用户（2个）**
+- 7 个商品（`mock_prod_0001..0007`）：6 ACTIVE（咖啡/茶/器具，含划线价）+ 1 DRAFT（验证列表过滤）
+- 4 个小程序用户（`mock_user_0001..0004`，openid 静默注册形态）
+- 4 个收货地址（默认地址唯一）
+- 12 个订单（`mock_order_0001..0012`）：状态 × 来源矩阵——
+  MINIAPP（PAID×3 含已发货 COMPLETED、PENDING×2、REFUNDED、CANCELLED）+ KF_SESSION（PAID×2、PENDING 无主单×2 供 claim/卡片落地联调）+ ADMIN_MANUAL（COMPLETED 含运单）
 
-- user@example.com（测试用户，手机号：13800138000）
-- user2@example.com（测试用户2）
-- 密码：全部为 `password123`
+## 幂等性说明（可反复执行）
 
-**角色系统**
-
-- 3个角色：超级管理员、管理员、访客
-- 16个权限：涵盖 todo、user、admin、resource 的 CRUD 操作
-- 角色权限关联已配置
-
-**示例数据**
-
-- 3个示例 Todos（关联到 user@example.com）
-
-### 2. 业务数据（seed-data.sql）
-
-**商户（6个）**
-
-- 海底捞火锅（餐饮，3F）
-- 星巴克咖啡（餐饮，1F）
-- 优衣库（购物，2F）
-- 万达影城（娱乐，5F）
-- 肯德基（餐饮，1F）
-- 耐克（购物，3F）
-
-**券模板（4个）**
-
-- 50元代100元火锅券（库存：1000）
-- 星巴克30元饮品券（库存：500）
-- 9.9元观影特惠券（库存：2000）
-- 100元美食通用券（库存：300）
-
-**订单（4个）**
-
-- 已支付并核销的火锅券订单
-- 已支付未核销的饮品券订单
-- 已支付并核销的观影券订单
-- 未支付的火锅券订单
-
-**新闻（3条）**
-
-- 春季美食节盛大开幕（已发布，1523次浏览）
-- 新商户入驻：耐克旗舰店（已发布，856次浏览）
-- 五一劳动节促销活动预告（草稿，342次浏览）
-
-**结算单（4个）**
-
-- 海底捞 2024-02 月度结算（已支付）
-- 星巴克 2024-02 月度结算（已支付）
-- 万达影城 2024-02 月度结算（已确认）
-- 海底捞 2024-03 月度结算（待结算）
-
-## 数据库配置
-
-- **容器名**：postgres
-- **数据库名**：couponHub
-- **用户名**：xinnix
-- **密码**：x12345678
+- 固定主键（`mock_` 前缀）+ `ON CONFLICT DO NOTHING`
+- `users` 表**没有 email 唯一约束**（唯一键：username/openid/unionid）——mock 用户用 `WHERE NOT EXISTS (openid)`，seed-base 用 `ON CONFLICT (id)`
+- 会话按 `session_key`、消息按 `kf_msg_id` 冲突跳过；重复执行数量不变
+- mock 数据与真实 KF 回调数据并存互不干扰（真实数据 open_kf_id/session_key 不同）
 
 ## 测试账号
 
-管理端登录：
-
-- Email: `superadmin@example.com`
-- Password: `password123`
-
-小程序登录：
-
-- Email: `user@example.com`
-- Password: `password123`
+- 管理端：`superadmin@example.com` / `password123`
+- 小程序：微信静默登录（真实 code2Session），mock 用户仅用于数据关联，不能直接登录
 
 ## 手动执行（可选）
 
-如果需要手动执行或调试：
-
 ```bash
-# 检查 PostgreSQL 容器
-docker ps | grep postgres
-
-# 执行基础数据
-docker exec -i postgres psql -U xinnix -d couponHub < infra/database/prisma/seed-base.sql
-
-# 执行业务数据
-docker exec -i postgres psql -U xinnix -d couponHub < infra/database/prisma/seed-data.sql
-
-# 验证数据
-docker exec -i postgres psql -U xinnix -d couponHub -c "SELECT '商户: ' || COUNT(*) FROM merchants UNION ALL SELECT '券模板: ' || COUNT(*) FROM coupon_templates;"
+docker exec -i postgres psql -U xinnix -d wesale -v ON_ERROR_STOP=1 < infra/database/prisma/seed-kf.sql
+docker exec -i postgres psql -U xinnix -d wesale -v ON_ERROR_STOP=1 < infra/database/prisma/seed-mall.sql
 ```
 
 ## 注意事项
 
-1. **幂等性**：脚本使用 `ON CONFLICT DO NOTHING`，可以重复执行而不会报错
-2. **依赖关系**：业务数据依赖基础数据，必须先执行 seed-base.sql
-3. **数据持久性**：数据直接写入 PostgreSQL，重启容器不会丢失
-4. **生产环境**：⚠️ 切勿在生产环境执行这些 seed 脚本
+1. **顺序**：seed-kf 在 seed-mall 之前（orders 外键引用 contacts/sessions）
+2. **生产环境**：⚠️ 切勿在生产执行（脚本无环境判断）
+3. **商品封面图**：mock 用 picsum.photos 占位，小程序真机调试需在微信后台加 downloadFile 合法域名，或换成自有图床
+4. **新建业务 mock**：继续加进对应 SQL 文件并保持 `mock_` 前缀 + 幂等约定，不要另起脚本
 
 ## 故障排查
 
-**问题：容器未运行**
-
 ```bash
+# 容器未运行
 docker start postgres
-```
 
-**问题：数据库连接失败**
+# 库不存在（默认库名取自根 .env 的 DATABASE_URL，当前为 wesale）
+docker exec -i postgres psql -U xinnix -c "CREATE DATABASE wesale;"
 
-```bash
-# 检查数据库是否存在
-docker exec -i postgres psql -U xinnix -l | grep couponHub
-
-# 如果不存在，创建数据库
-docker exec -i postgres psql -U xinnix -c "CREATE DATABASE couponHub;"
-```
-
-**问题：表不存在**
-
-```bash
-# 运行数据库迁移
-pnpm --filter @opencode/database prisma migrate dev
+# 表不存在 → 先跑迁移（或启动 API 容器自动 migrate deploy）
+pnpm --filter @opencode/database exec prisma migrate deploy
 ```

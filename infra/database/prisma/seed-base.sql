@@ -86,9 +86,11 @@ ON CONFLICT DO NOTHING;
 
 -- ============================================
 -- 5. 创建小程序用户
+-- 注意：users 表没有 email 唯一约束（唯一键为 username/openid/unionid），
+-- 幂等改用固定 id + ON CONFLICT (id)。
 -- ============================================
 INSERT INTO users (id, username, email, "passwordHash", nickname, phone, "isActive", "createdAt", "updatedAt")
 VALUES
   ('u1', 'user', 'user@example.com', '$2a$10$lkkKl9vU1py90sJ/IX25U.idJvyroYi2XkdAbBaxnX4oIY3BTAipa', '测试用户', '13800138000', true, NOW(), NOW()),
   ('u2', 'user2', 'user2@example.com', '$2a$10$lkkKl9vU1py90sJ/IX25U.idJvyroYi2XkdAbBaxnX4oIY3BTAipa', '测试用户2', NULL, true, NOW(), NOW())
-ON CONFLICT (email) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
