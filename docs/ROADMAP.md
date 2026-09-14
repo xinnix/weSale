@@ -1,6 +1,6 @@
 # weSale 转型计划与进度
 
-> 最后更新：2026-09-09。本文档是项目路线图与进度台账。当前方向：**B2B 商家工具 · 人机协同形态**（微信客服 AI 全自动接待 + 企微侧边栏 AI Copilot + 会员积分留存），2026-09-08 由「全自动销售」修订而来，决策依据见文末附注，产品定义见 `docs/prd.md`（PRD v2.0，SSOT）。
+> 最后更新：2026-09-13。本文档是项目路线图与进度台账。当前方向：**B2B 商家工具 · 人机协同形态**（微信客服 AI 全自动接待 + 企微侧边栏 AI Copilot + 会员积分留存），2026-09-08 由「全自动销售」修订而来，决策依据见文末附注，产品定义见 `docs/prd.md`（PRD v2.0，SSOT），演示链路对齐见 `docs/demo-blueprint.md`。
 
 ## 一、产品定位（转型后）
 
@@ -25,7 +25,7 @@ KF 逼单转化从「发 H5 支付链接」改为「**AI 建单 → 发企微小
 ```
 Phase 0    收尾提交（未提交变更验证+分组提交+CI基线修复）            ✅ 已完成
 Phase 1    小程序商城 + 支付闭环 + 商家化基础                        🔨 进行中（Copilot 的地基，范围不变）
-Phase 2    企微侧边栏 AI Copilot（壳→AI生成→知识库RAG→动态卡片）     未开始（方向已拍板）
+Phase 2    企微侧边栏 AI Copilot（壳→AI生成→知识库RAG→动态卡片）     🔨 进行中（M1 地基已落地）
 Phase 2.5  积分会员终端 + 生命周期任务引擎                            未开始
 Phase 3    社群运营 + 会话存档评估（企微好友私聊上下文）              未开始（后移）
 ```
@@ -89,6 +89,20 @@ Phase 3    社群运营 + 会话存档评估（企微好友私聊上下文）   
 
 产品定义见 `docs/prd.md`（PRD v2.0，SSOT；R1-R6 修订过程存档于 `docs/prd-copilot.md`）。核心约束回顾：上下文源 = 自有 DB 的 KF 会话记录（`ConversationMessage` 已入库）；侧边栏发送 = 销售在企微客户端内逐条手动确认的 `sendChatMessage`（D9，2026-09-09 拍板），严禁无人值守自动发送；Member 第三身份（企微员工 OAuth2）。
 
+### ✅ M1 地基已落地（2026-09-13，代码侧；真联调待企微前置）
+
+| 任务               | 内容                                                                                                                                                                                                        | 关键产物                                             |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| schema 四件套      | `Contact` +`userId`(OneID)/`externalUserId`/`tags`/`pointsBalance`/`metadata`；`PointsLedger`（`idempotencyKey` 幂等）；`LiveCode` + `LiveCodeStatus`；`WecomConfig` +`memberUserids` 接待白名单（开放 #5） | 迁移 `20260913043607_...`                            |
+| Member 第三身份    | 企微 OAuth2 静默授权 → 白名单校验 → 短期 Member JWT（type=member，2h，无 refresh）；**纯 REST** 新模块 `modules/sidebar/`，零 tRPC 侵入；`MemberJwtGuard` 与 Admin/User 身份面彻底隔离                      | `apps/api/src/modules/sidebar/`                      |
+| 侧边栏 H5 壳       | `apps/sidebar`（Vite+React，gzip 64KB）；JS-SDK `ww.config`/`getCurExternalContact`/`sendChatMessage` 封装；画像面板（标签/统计/订单/会话/辅助建议，发送走人工确认）                                        | `apps/sidebar/`                                      |
+| F3 OneID 订单归并  | 路径 A：`claimOrder` 反写 `Contact.userId`（仅空写，1:1 不覆盖）→ 画像聚合带出 User 完整订单历史（unionid/phone 归并后置）                                                                                  | `mall.service.ts`                                    |
+| 语义标签引擎       | 行为标签实时推导（首购/复购/高客单价/沉睡/品类偏好）+ 渠道标签合并（`Contact.tags` 为 SSOT，企微原生 mark_tags 双写）                                                                                       | `sidebar-tags.service.ts`                            |
+| F8 企微封装 + 归因 | `WecomApiService` externalcontact 族（getuserinfo/getExternalContact/mark_tag/add_contact_way/jsapi_ticket）；`change_external_contact` 回调归因分发（活码 state → Contact + autoTags 双写）                | `wecom-api.service.ts`/`external-contact.service.ts` |
+| 验证               | 端到端画像 spike（复购/品类标签正确推导）；wecom-api 8 例 + mall OneID 2 例；api 90 tests 全过                                                                                                              | `scripts/spike-sidebar-*.ts`                         |
+
+> **待真联调**（需企微后台配置）：OAuth 登录实测、`sendChatMessage` 三端、活码真实回调归因。前置：客户联系应用 secret / JS-SDK 可信域名 / OAuth 回调域名 / 网页应用+聊天工具栏。
+
 | 里程碑        | 任务                                                                                                                                                                                                                                                          | 说明                                                                                                                       | 依赖             |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ---------------- |
 | M1 侧边栏壳   | `apps/sidebar` H5 + 企微 OAuth2 + JS-SDK `getCurExternalContact` + `sendChatMessage` 发送 spike（text/小程序卡片，三端行为实测）+ 画像只读页 + Member JWT 第三身份 + F8 活码获客（admin：`add_contact_way` 活码管理 + state 归因 + 自动标签，可与侧边栏并行） | 端到端打通企微侧边栏整链路（风险最高，先做 spike）；含 `Contact.userId` 关联 + 画像聚合 API；活码与 F2 共用归因回调（D10） | 无               |
@@ -141,6 +155,7 @@ Phase 3    社群运营 + 会话存档评估（企微好友私聊上下文）   
 
 ## 附：关键背景
 
+- **2026-09-13 演示蓝本 + M1 地基落地**：与产品对齐端到端演示蓝本（`docs/demo-blueprint.md`），拍板四项决策：双路径获客 / 扫码注册即送积分 / 侧边栏含 M2 AI 生成 / 真联调企微。M1 代码侧落地：schema 四件套 + Member 第三身份（纯 REST）+ `apps/sidebar` H5 壳 + **OneID 订单归并（路径 A：`claimOrder` 反写 `Contact.userId`）** + 语义标签引擎 + 企微 externalcontact 封装与回调归因。**核心命题：打通 OneID 能看到顾客完整订单历史，语义标签才准确**；unionid/phone 归并后置。真联调待企微后台前置。
 - **2026-09-08 方向修订（Copilot pivot）**：产品形态从全自动销售调整为「销售 Copilot（企微侧边栏）+ 会员积分留存」。三项拍板决策：① KF 自动接待保留（双轨制），侧边栏话术全部人工确认；② V1 仅企微原生侧边栏，Chrome 扩展移出；③ 企微 API 无法读取会话消息，侧边栏上下文源 = 自有 DB 的 KF 会话记录。完整修订记录（R1-R6）见 `docs/prd-copilot.md`
 - **2026-09-09 发送红线修订（D9）**：侧边栏放开「一键直接发送」——话术 text + 产品 miniprogram 卡片走企微官方 `sendChatMessage`（销售在企微客户端内逐条手动确认，PC 端需再点发送；非无人值守）；一键复制降级为兜底。P1 红线改写为「严禁静默/定时/批量自动发送」，依据见 `docs/prd.md` D4/D9
 - **2026-09-09 引入路径补充（F8/D10）**：企微好友引入 = KF 会话引导（F2）+ 活码扫码（F8，admin 生成带 state 渠道参数的「联系我」码，投放包裹卡/门店/广告）双路径，共用归因回调按 state 分流；自动打标签双写（企微原生 mark_tags + `Contact.tags`）。见 `docs/prd.md` D10/F8
