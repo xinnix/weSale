@@ -16,8 +16,10 @@ const { Title, Text } = Typography;
 const QUICK_LINKS = [
   { label: '商品管理', path: '/products', desc: '上架 / 编辑销售商品' },
   { label: '订单管理', path: '/orders', desc: '查看订单、发货与退款' },
+  { label: '客户管理', path: '/customers', desc: '客户画像 · 标签 · 积分' },
   { label: '客服会话', path: '/kf/sessions', desc: 'AI 接待与人工接管' },
-  { label: '落地页统计', path: '/landing-stats', desc: '流量与转化分析' },
+  { label: '活码管理', path: '/live-codes', desc: '私域获客活码与渠道归因' },
+  { label: '推荐话术', path: '/copilot', desc: 'AI Copilot 辅助话术' },
 ];
 
 function DashboardPage() {

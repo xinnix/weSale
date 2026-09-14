@@ -16,6 +16,11 @@ import { ContactListPage, SessionListPage, SessionChatPage, KfAccountListPage } 
 import { LandingStatsPage } from './modules/landing-stats';
 import { DashboardPage } from './modules/dashboard';
 import { ProductListPage, OrderListPage, OrderDetailPage } from './modules/product';
+import { CustomerTagsPage } from './modules/customer/tags';
+import { MemberPointsPage } from './modules/customer/points';
+import { LiveCodeListPage } from './modules/growth/live-code';
+import { CopilotPage } from './modules/copilot/suggestions';
+import { KnowledgeBasePage } from './modules/copilot/knowledge';
 import { useMessageInitializer } from './shared/hooks/useMessageInitializer';
 // Create QueryClient outside component to prevent re-creation
 const queryClient = new QueryClient({
@@ -102,7 +107,12 @@ function AppContent() {
             <Route path="wecom" element={<WecomConfigListPage />} />
             <Route path="wecom/messages" element={<WecomMessageListPage />} />
             <Route path="wecom/events" element={<WecomEventListPage />} />
-            <Route path="kf/contacts" element={<ContactListPage />} />
+            <Route path="customers" element={<ContactListPage />} />
+            <Route path="customer-tags" element={<CustomerTagsPage />} />
+            <Route path="points" element={<MemberPointsPage />} />
+            <Route path="live-codes" element={<LiveCodeListPage />} />
+            <Route path="copilot" element={<CopilotPage />} />
+            <Route path="knowledge" element={<KnowledgeBasePage />} />
             <Route path="kf/sessions" element={<SessionListPage />} />
             <Route path="kf/sessions/:id" element={<SessionChatPage />} />
             <Route path="kf/accounts" element={<KfAccountListPage />} />

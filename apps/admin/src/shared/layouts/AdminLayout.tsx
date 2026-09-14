@@ -17,6 +17,14 @@ import {
   ShoppingOutlined,
   FileTextOutlined,
   DashboardOutlined,
+  TagsOutlined,
+  GiftOutlined,
+  RiseOutlined,
+  QrcodeOutlined,
+  BarChartOutlined,
+  CustomerServiceOutlined,
+  BulbOutlined,
+  BookOutlined,
 } from '@ant-design/icons';
 import { useState, useMemo } from 'react';
 import { useAuth } from '../auth';
@@ -39,29 +47,60 @@ const iconMap: Record<string, React.ReactNode> = {
   TeamOutlined: <TeamOutlined />,
   ShoppingOutlined: <ShoppingOutlined />,
   FileTextOutlined: <FileTextOutlined />,
+  TagsOutlined: <TagsOutlined />,
+  GiftOutlined: <GiftOutlined />,
+  RiseOutlined: <RiseOutlined />,
+  QrcodeOutlined: <QrcodeOutlined />,
+  BarChartOutlined: <BarChartOutlined />,
+  CustomerServiceOutlined: <CustomerServiceOutlined />,
+  BulbOutlined: <BulbOutlined />,
+  BookOutlined: <BookOutlined />,
 };
 
 // prettier-ignore
 const menuConfig = [
   { key: "/dashboard", label: "工作台", icon: "DashboardOutlined", permission: null },
   {
-    key: "sales",
-    label: "产品销售",
+    key: "commerce",
+    label: "商品订单",
     icon: "ShoppingOutlined",
     permission: null,
     children: [
-      { key: "/products", label: "产品管理", icon: "ShoppingOutlined", permission: null },
+      { key: "/products", label: "商品管理", icon: "ShoppingOutlined", permission: null },
       { key: "/orders", label: "订单管理", icon: "FileTextOutlined", permission: null },
     ],
   },
   {
-    key: "system",
-    label: "系统管理",
-    icon: "SettingOutlined",
+    key: "customers",
+    label: "客户经营",
+    icon: "TeamOutlined",
     permission: null,
     children: [
-      { key: "/admins", label: "管理员管理", icon: "SafetyCertificateOutlined", permission: "menu:admins" },
-      { key: "/roles", label: "角色管理", icon: "SafetyCertificateOutlined", permission: "menu:roles" },
+      { key: "/customers", label: "客户管理", icon: "UserOutlined", permission: "menu:kf" },
+      { key: "/customer-tags", label: "客户标签", icon: "TagsOutlined", permission: null },
+      { key: "/points", label: "会员积分", icon: "GiftOutlined", permission: null },
+    ],
+  },
+  {
+    key: "growth",
+    label: "获客增长",
+    icon: "RiseOutlined",
+    permission: null,
+    children: [
+      { key: "/live-codes", label: "活码管理", icon: "QrcodeOutlined", permission: null },
+      { key: "/landing-stats", label: "落地页统计", icon: "BarChartOutlined", permission: null },
+    ],
+  },
+  {
+    key: "service",
+    label: "客服与 AI",
+    icon: "RobotOutlined",
+    permission: null,
+    children: [
+      { key: "/kf/sessions", label: "客服会话", icon: "MessageOutlined", permission: "menu:kf" },
+      { key: "/kf/accounts", label: "客服账号", icon: "CustomerServiceOutlined", permission: "menu:kf" },
+      { key: "/copilot", label: "推荐话术", icon: "BulbOutlined", permission: null },
+      { key: "/knowledge", label: "知识库", icon: "BookOutlined", permission: null },
     ],
   },
   {
@@ -76,23 +115,14 @@ const menuConfig = [
     ],
   },
   {
-    key: "kf",
-    label: "客服管理",
-    icon: "MessageOutlined",
+    key: "system",
+    label: "系统设置",
+    icon: "SettingOutlined",
     permission: null,
     children: [
-      { key: "/kf/sessions", label: "会话管理", icon: "MessageOutlined", permission: "menu:kf" },
-      { key: "/kf/contacts", label: "访客管理", icon: "UserOutlined", permission: "menu:kf" },
-      { key: "/kf/accounts", label: "客服账号", icon: "TeamOutlined", permission: "menu:kf" },
-    ],
-  },
-  {
-    key: "growth",
-    label: "增长分析",
-    icon: "ThunderboltOutlined",
-    permission: null,
-    children: [
-      { key: "/landing-stats", label: "落地页统计", icon: "ThunderboltOutlined", permission: null },
+      { key: "/admins", label: "管理员", icon: "SafetyCertificateOutlined", permission: "menu:admins" },
+      { key: "/roles", label: "角色权限", icon: "TeamOutlined", permission: "menu:roles" },
+      { key: "/users", label: "小程序用户", icon: "UserOutlined", permission: null },
     ],
   },
 ];

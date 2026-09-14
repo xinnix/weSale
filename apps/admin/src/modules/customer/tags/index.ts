@@ -1,0 +1,1 @@
+export { CustomerTagsPage } from './CustomerTagsPage';

@@ -1,0 +1,1 @@
+export { MemberPointsPage } from './MemberPointsPage';

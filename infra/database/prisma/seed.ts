@@ -112,6 +112,84 @@ async function main() {
       }),
     ),
 
+    // Product CRUD
+    ...['create', 'read', 'update', 'delete'].map((action) =>
+      prisma.permission.upsert({
+        where: { resource_action: { resource: 'product', action } },
+        update: {},
+        create: {
+          resource: 'product',
+          action,
+          description: {
+            create: '创建商品',
+            read: '查看商品',
+            update: '更新商品',
+            delete: '删除商品',
+          }[action],
+        },
+      }),
+    ),
+
+    // Order 权限
+    ...['read', 'ship', 'refund'].map((action) =>
+      prisma.permission.upsert({
+        where: { resource_action: { resource: 'order', action } },
+        update: {},
+        create: {
+          resource: 'order',
+          action,
+          description: {
+            read: '查看订单',
+            ship: '订单发货',
+            refund: '订单退款',
+          }[action],
+        },
+      }),
+    ),
+
+    // LiveCode CRUD（企微活码）
+    ...['create', 'read', 'update', 'delete'].map((action) =>
+      prisma.permission.upsert({
+        where: { resource_action: { resource: 'livecode', action } },
+        update: {},
+        create: {
+          resource: 'livecode',
+          action,
+          description: {
+            create: '创建活码',
+            read: '查看活码',
+            update: '更新活码',
+            delete: '删除活码',
+          }[action],
+        },
+      }),
+    ),
+
+    // WecomConfig CRUD（后端 wecom.config router 使用 resource 'wecom_config'）
+    ...['create', 'read', 'update', 'delete'].map((action) =>
+      prisma.permission.upsert({
+        where: { resource_action: { resource: 'wecom_config', action } },
+        update: {},
+        create: {
+          resource: 'wecom_config',
+          action,
+          description: {
+            create: '创建企微配置',
+            read: '查看企微配置',
+            update: '更新企微配置',
+            delete: '删除企微配置',
+          }[action],
+        },
+      }),
+    ),
+
+    // Admin 角色分配
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'admin', action: 'manage_roles' } },
+      update: {},
+      create: { resource: 'admin', action: 'manage_roles', description: '分配管理员角色' },
+    }),
+
     // Menu visibility permissions (match menuConfig in AdminLayout)
     prisma.permission.upsert({
       where: { resource_action: { resource: 'menu', action: 'agents' } },
@@ -132,6 +210,16 @@ async function main() {
       where: { resource_action: { resource: 'menu', action: 'wecom' } },
       update: {},
       create: { resource: 'menu', action: 'wecom', description: '企业微信菜单' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'menu', action: 'kf' } },
+      update: {},
+      create: { resource: 'menu', action: 'kf', description: '客服/客户菜单' },
+    }),
+    prisma.permission.upsert({
+      where: { resource_action: { resource: 'menu', action: 'livecode' } },
+      update: {},
+      create: { resource: 'menu', action: 'livecode', description: '活码管理菜单' },
     }),
   ]);
 

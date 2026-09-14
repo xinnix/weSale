@@ -76,7 +76,7 @@ export const ContactListPage = () => {
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px' }}>
       <List>
         <Card>
-          <h1 style={{ margin: '0 0 16px 0', fontSize: 24, fontWeight: 'bold' }}>访客管理</h1>
+          <h1 style={{ margin: '0 0 16px 0', fontSize: 24, fontWeight: 'bold' }}>客户管理</h1>
 
           <Input
             placeholder="搜索昵称、手机号、openId"
