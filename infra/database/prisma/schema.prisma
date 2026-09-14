@@ -325,6 +325,22 @@ enum LiveCodeStatus {
   DISABLED
 }
 
+// 意图分类（与 IntentLevel 强度正交：一个表"问什么"，一个表"多强"）
+enum IntentCategory {
+  USAGE_CONSULTATION // 使用咨询
+  OBJECTION_PRICE // 价格异议
+  SAFETY_CONCERN // 安全顾虑
+  COMPLAINT // 投诉
+  GENERAL // 一般
+}
+
+// 三策略（F4.4）
+enum CopilotStrategy {
+  A_RATIONAL // 理性/科普
+  B_EMOTIONAL // 感性/逼单
+  C_UPSELL // 搭售/升级
+}
+
 enum SessionState {
   GREETING
   NEEDS_DISCOVERY
@@ -456,6 +472,30 @@ model PointsLedger {
   @@index([refOrderId])
   @@index([createdAt])
   @@map("points_ledgers")
+}
+
+// ============================================
+// 发送事件流水 (SendEvent) —— 侧边栏采纳率 + 合规审计（开放问题 #8）
+// 侧边栏走企微 JS-SDK 客户端发送，后端不经手 → 独立轻量流水
+// ============================================
+model SendEvent {
+  id              String           @id @default(cuid())
+  memberUserId    String           @map("member_user_id") // 企微成员 userid
+  corpId          String           @map("corp_id")
+  externalUserId  String           @map("external_user_id") // 客户
+  contactId       String?          @map("contact_id")
+  generationId    String?          @map("generation_id") // 关联哪次生成
+  strategy        CopilotStrategy? // 采纳的策略
+  msgType         String           @map("msg_type") // text | miniprogram
+  adopted         Boolean          @default(true) // 复制视为弱采纳（false）
+  contentSnapshot String?          @db.Text @map("content_snapshot")
+  sentAt          DateTime         @default(now()) @map("sent_at")
+
+  @@index([memberUserId])
+  @@index([contactId])
+  @@index([generationId])
+  @@index([sentAt])
+  @@map("send_events")
 }
 
 // ============================================

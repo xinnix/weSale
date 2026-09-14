@@ -654,3 +654,30 @@ export type UpdateAddressInput = z.infer<typeof UpdateAddressSchema>;
 export type LiveCodeStatus = z.infer<typeof LiveCodeStatusSchema>;
 export type CreateLiveCodeInput = z.infer<typeof CreateLiveCodeSchema>;
 export type UpdateLiveCodeInput = z.infer<typeof UpdateLiveCodeSchema>;
+
+// ============================================
+// Copilot / SendEvent Schemas（侧边栏 AI 生成 + 发送流水）
+// ============================================
+
+export const IntentCategorySchema = z.enum([
+  'USAGE_CONSULTATION',
+  'OBJECTION_PRICE',
+  'SAFETY_CONCERN',
+  'COMPLAINT',
+  'GENERAL',
+]);
+
+export const CopilotStrategySchema = z.enum(['A_RATIONAL', 'B_EMOTIONAL', 'C_UPSELL']);
+
+export const CreateSendEventSchema = z.object({
+  externalUserId: z.string().min(1, '客户 ID 不能为空'),
+  generationId: z.string().optional(),
+  strategy: CopilotStrategySchema.optional(),
+  msgType: z.enum(['text', 'miniprogram']),
+  adopted: z.boolean().optional().default(true),
+  contentSnapshot: z.string().optional(),
+});
+
+export type IntentCategory = z.infer<typeof IntentCategorySchema>;
+export type CopilotStrategy = z.infer<typeof CopilotStrategySchema>;
+export type CreateSendEventInput = z.infer<typeof CreateSendEventSchema>;
