@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { RedisService } from '../../shared/services/redis.service';
 import { WecomModule } from '../wecom/module';
 import { SidebarClientController } from './rest/sidebar-client.controller';
 import { SidebarOauthController } from './rest/sidebar-oauth.controller';
@@ -15,6 +16,6 @@ import { SidebarTagsService } from './services/sidebar-tags.service';
 @Module({
   imports: [WecomModule],
   controllers: [SidebarOauthController, SidebarClientController],
-  providers: [SidebarAuthService, SidebarProfileService, SidebarTagsService],
+  providers: [SidebarAuthService, SidebarProfileService, SidebarTagsService, RedisService],
 })
 export class SidebarModule {}
