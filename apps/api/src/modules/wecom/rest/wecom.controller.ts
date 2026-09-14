@@ -5,6 +5,7 @@ import { WecomCryptoService } from '../services/wecom-crypto.service';
 import { WecomConfigService } from '../services/wecom-config.service';
 import { WecomMessageService } from '../services/wecom-message.service';
 import { WecomEventService } from '../services/wecom-event.service';
+import { ExternalContactService } from '../services/external-contact.service';
 
 @Controller('wecom')
 export class WecomController {
@@ -15,6 +16,7 @@ export class WecomController {
     private readonly wecomConfigService: WecomConfigService,
     private readonly wecomMessageService: WecomMessageService,
     private readonly wecomEventService: WecomEventService,
+    private readonly externalContactService: ExternalContactService,
   ) {}
 
   /**
@@ -116,14 +118,19 @@ export class WecomController {
       const parsed = this.wecomCryptoService.parseXml(plainXml);
 
       if (parsed.MsgType === 'event') {
-        await this.wecomEventService.logEvent({
-          configId,
-          eventType: parsed.Event || 'unknown',
-          eventKey: parsed.EventKey,
-          fromUser: parsed.FromUserName,
-          content: JSON.stringify(parsed),
-          rawXml: plainXml,
-        });
+        // 客户联系事件：change_external_contact（好友添加/解除）走归因分发，其余维持日志
+        if (parsed.Event === 'change_external_contact') {
+          await this.externalContactService.handleChangeEvent({ corpId: config.corpId }, parsed);
+        } else {
+          await this.wecomEventService.logEvent({
+            configId,
+            eventType: parsed.Event || 'unknown',
+            eventKey: parsed.EventKey,
+            fromUser: parsed.FromUserName,
+            content: JSON.stringify(parsed),
+            rawXml: plainXml,
+          });
+        }
         this.logger.log(
           `收到事件: configId=${configId}, event=${parsed.Event}, from=${parsed.FromUserName}`,
         );

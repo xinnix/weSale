@@ -1,0 +1,146 @@
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import * as crypto from 'crypto';
+import * as jwt from 'jsonwebtoken';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { RedisService } from '../../../shared/services/redis.service';
+import { WecomApiService } from '../../wecom/services/wecom-api.service';
+
+const WECOM_OAUTH_AUTHORIZE = 'https://open.weixin.qq.com/connect/oauth2/authorize';
+
+@Injectable()
+export class SidebarAuthService {
+  private readonly logger = new Logger(SidebarAuthService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+    private readonly wecomApi: WecomApiService,
+    private readonly redis: RedisService,
+  ) {}
+
+  getCorpId(): string {
+    return this.config.get<string>('WX_WORK_CORP_ID', '');
+  }
+
+  /**
+   * 构造企微网页授权 URL（snsapi_base 静默授权，不弹授权页）
+   * state 用于防 CSRF / 携带来源标记
+   */
+  buildOAuthUrl(redirectUri: string, state: string): string {
+    const corpId = this.getCorpId();
+    const params = new URLSearchParams({
+      appid: corpId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'snsapi_base',
+      state,
+    });
+    return `${WECOM_OAUTH_AUTHORIZE}?${params.toString()}#wechat_redirect`;
+  }
+
+  /**
+   * OAuth code 换取 Member JWT：
+   * getuserinfo(code) → UserId → 白名单校验 → 短期 JWT（type=member）
+   */
+  async exchangeCodeForMember(code: string): Promise<{
+    token: string;
+    userId: string;
+    corpId: string;
+  }> {
+    const corpId = this.getCorpId();
+    const secret = this.config.get<string>('WX_WORK_SIDEBAR_SECRET', '');
+    if (!secret) {
+      throw new UnauthorizedException('未配置 WX_WORK_SIDEBAR_SECRET（客户联系应用）');
+    }
+
+    const accessToken = await this.wecomApi.getAccessToken(corpId, secret);
+    const member = await this.wecomApi.getMemberByCode(accessToken, code);
+    if (!member.userId) {
+      throw new UnauthorizedException('OAuth 未返回成员身份（可能非本企业成员）');
+    }
+
+    await this.assertWhitelisted(corpId, member.userId);
+    return { token: this.signMemberToken(member.userId, corpId), userId: member.userId, corpId };
+  }
+
+  /**
+   * 接待成员白名单校验（开放问题 #5：扩展 WecomConfig.memberUserids，任意匹配即放行）
+   * 未命中直接抛 Unauthorized
+   */
+  async assertWhitelisted(corpId: string, userId: string): Promise<void> {
+    const allow = await this.isWhitelisted(corpId, userId);
+    if (!allow) {
+      this.logger.warn(`侧边栏登录被拒：${userId} 不在接待成员白名单 (corpId=${corpId})`);
+      throw new UnauthorizedException('您不在接待成员白名单中');
+    }
+  }
+
+  async isWhitelisted(corpId: string, userId: string): Promise<boolean> {
+    const cacheKey = `sidebar:whitelist:${corpId}`;
+    let whitelist: string[] | null = null;
+    try {
+      const cached = await this.redis.get<string>(cacheKey);
+      if (cached) whitelist = JSON.parse(cached);
+    } catch {
+      this.logger.warn('Redis 白名单缓存读取失败，直查 DB');
+    }
+
+    if (!whitelist) {
+      const configs = await this.prisma.wecomConfig.findMany({
+        where: { corpId, isActive: true },
+      });
+      whitelist = configs.flatMap((c) =>
+        Array.isArray(c.memberUserids) ? (c.memberUserids as string[]) : [],
+      );
+      try {
+        await this.redis.set(cacheKey, JSON.stringify(whitelist), 60_000);
+      } catch {
+        this.logger.warn('Redis 白名单缓存写入失败');
+      }
+    }
+
+    return whitelist.includes(userId);
+  }
+
+  /** 短期 Member JWT（type=member，默认 2h，无 refresh——过期重走 OAuth 静默授权） */
+  signMemberToken(userId: string, corpId: string): string {
+    const secret = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+    const expiresIn = this.config.get<string>('MEMBER_JWT_EXPIRES_IN', '2h');
+    const options: jwt.SignOptions = { expiresIn: expiresIn as jwt.SignOptions['expiresIn'] };
+    return jwt.sign({ sub: userId, corpId, type: 'member' }, secret, options);
+  }
+
+  /**
+   * JS-SDK 签名配置（侧边栏 ww.config 用）
+   * 走客户联系应用 token 取 get_jsapi_ticket → sha1 签名
+   */
+  async getJsapiConfig(url: string): Promise<{
+    appId: string;
+    agentid: number;
+    timestamp: number;
+    nonceStr: string;
+    signature: string;
+  }> {
+    const corpId = this.getCorpId();
+    const secret = this.config.get<string>('WX_WORK_SIDEBAR_SECRET', '');
+    if (!secret) {
+      throw new UnauthorizedException('未配置 WX_WORK_SIDEBAR_SECRET（客户联系应用）');
+    }
+    const accessToken = await this.wecomApi.getAccessToken(corpId, secret);
+    const ticket = await this.wecomApi.getJsapiTicket(accessToken);
+
+    const nonceStr = crypto.randomBytes(16).toString('hex');
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signStr = `jsapi_ticket=${ticket}&noncestr=${nonceStr}&timestamp=${timestamp}&url=${url}`;
+    const signature = crypto.createHash('sha1').update(signStr).digest('hex');
+
+    return {
+      appId: corpId,
+      agentid: Number(this.config.get<string>('WX_WORK_AGENT_ID', '0')),
+      timestamp,
+      nonceStr,
+      signature,
+    };
+  }
+}

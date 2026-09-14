@@ -179,6 +179,16 @@ export class MallService {
     }
 
     await this.prisma.order.update({ where: { id: order.id }, data: { userId } });
+
+    // OneID 订单归并：同一张订单横跨两侧（contactId=企微/KF 侧，userId=小程序侧）
+    // → 反写 Contact.userId 打通画像。仅空写（OneID 1:1，已有关联不覆盖）
+    if (order.contactId) {
+      await this.prisma.contact.updateMany({
+        where: { id: order.contactId, userId: null },
+        data: { userId },
+      });
+    }
+
     return { ...order, userId };
   }
 

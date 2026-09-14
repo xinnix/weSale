@@ -24,10 +24,14 @@ function createMallService() {
   const user = {
     findUnique: vi.fn(async () => null),
   };
+  const contact = {
+    updateMany: vi.fn(async () => ({ count: 1 })),
+  };
   const prisma: any = {
     address,
     order,
     user,
+    contact,
     $transaction: vi.fn(async (ops: any) => (Array.isArray(ops) ? Promise.all(ops) : ops)),
   };
   const orderService = {
@@ -45,7 +49,7 @@ function createMallService() {
   };
 
   const service = new MallService(prisma, orderService as any, wechatPayService as any);
-  return { service, prisma, address, order, user, orderService, wechatPayService };
+  return { service, prisma, address, order, user, contact, orderService, wechatPayService };
 }
 
 describe('MallService 收货地址', () => {
@@ -228,6 +232,40 @@ describe('MallService 订单', () => {
     }));
 
     await expect(ctx.service.claimOrder('u1', 'WS1')).rejects.toThrow(ForbiddenException);
+  });
+
+  it('claim：OneID 订单归并——订单带 contactId 时反写 Contact.userId（仅空写）', async () => {
+    const unclaimed: any = {
+      id: 'o1',
+      orderNo: 'WS1',
+      contactId: 'c1',
+      userId: null,
+      status: 'PENDING',
+      product: {},
+    };
+    ctx.order.findUnique = vi.fn(async () => unclaimed);
+    ctx.order.update = vi.fn(async () => unclaimed);
+
+    await ctx.service.claimOrder('u1', 'WS1');
+    expect(ctx.contact.updateMany).toHaveBeenCalledWith({
+      where: { id: 'c1', userId: null },
+      data: { userId: 'u1' },
+    });
+  });
+
+  it('claim：订单无 contactId（纯小程序下单）不触达 Contact', async () => {
+    ctx.order.findUnique = vi.fn(async () => ({
+      id: 'o1',
+      orderNo: 'WS1',
+      contactId: null,
+      userId: null,
+      status: 'PENDING',
+      product: {},
+    }));
+    ctx.order.update = vi.fn(async () => ({}));
+
+    await ctx.service.claimOrder('u1', 'WS1');
+    expect(ctx.contact.updateMany).not.toHaveBeenCalled();
   });
 });
 

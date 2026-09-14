@@ -136,6 +136,92 @@ export class WecomApiService {
   }
 
   /**
+   * OAuth2 静默授权换取成员身份
+   * GET /cgi-bin/auth/getuserinfo?code=CODE
+   * 用「客户联系」应用 token（需开通客户联系权限）
+   */
+  async getMemberByCode(
+    accessToken: string,
+    code: string,
+  ): Promise<{ userId?: string; openId?: string; errcode?: number }> {
+    const url = `${WECOM_API_BASE}/auth/getuserinfo?access_token=${accessToken}&code=${encodeURIComponent(code)}`;
+    const data = await this.get(url);
+    return {
+      userId: data.userid,
+      openId: data.openid,
+      errcode: data.errcode,
+    };
+  }
+
+  /**
+   * 获取客户详情（企微好友/客服访客，客户联系权限）
+   * GET /cgi-bin/externalcontact/get?external_userid=XXX
+   */
+  async getExternalContact(accessToken: string, externalUserId: string): Promise<any> {
+    const url = `${WECOM_API_BASE}/externalcontact/get?access_token=${accessToken}&external_userid=${encodeURIComponent(externalUserId)}`;
+    return this.get(url);
+  }
+
+  /**
+   * 客户标签勾选/移除（双写企微原生标签，销售聊天界面可见）
+   * POST /cgi-bin/externalcontact/mark_tag
+   */
+  async markTags(
+    accessToken: string,
+    params: {
+      externalUserId: string;
+      addTag?: string[];
+      removeTag?: string[];
+    },
+  ): Promise<any> {
+    const body: Record<string, any> = {
+      userid: params.externalUserId,
+    };
+    if (params.addTag?.length) body.add_tag = params.addTag;
+    if (params.removeTag?.length) body.remove_tag = params.removeTag;
+    return this.post(
+      `${WECOM_API_BASE}/externalcontact/mark_tag?access_token=${accessToken}`,
+      body,
+    );
+  }
+
+  /**
+   * 生成/更新「联系我」活码配置（F8 站外获客）
+   * POST /cgi-bin/externalcontact/add_contact_way
+   */
+  async addContactWay(
+    accessToken: string,
+    params: {
+      type: number; // 1 单人 / 2 多人
+      scene: number; // 1 在小程序中联系 / 2 通过二维码联系
+      user?: string[];
+      party?: string[];
+      state?: string;
+      remark?: string;
+      autoAddCustomerTag?: number;
+      customerType?: number;
+    },
+  ): Promise<any> {
+    return this.post(
+      `${WECOM_API_BASE}/externalcontact/add_contact_way?access_token=${accessToken}`,
+      params,
+    );
+  }
+
+  /**
+   * 删除「联系我」活码配置（活码停用）
+   * POST /cgi-bin/externalcontact/del_contact_way
+   */
+  async delContactWay(accessToken: string, configId: string): Promise<any> {
+    return this.post(
+      `${WECOM_API_BASE}/externalcontact/del_contact_way?access_token=${accessToken}`,
+      {
+        config_id: configId,
+      },
+    );
+  }
+
+  /**
    * 上传临时素材（图片），返回 media_id（3 天有效）
    * POST /cgi-bin/media/upload?access_token=TOKEN&type=image
    */
@@ -155,6 +241,28 @@ export class WecomApiService {
 
     if (data.errcode && data.errcode !== 0) {
       this.logger.error(`上传临时素材失败: ${data.errmsg} (errcode: ${data.errcode})`);
+      throw new Error(`企业微信 API 错误: ${data.errmsg} (errcode: ${data.errcode})`);
+    }
+
+    return data;
+  }
+
+  /**
+   * 获取 jsapi_ticket（侧边栏 JS-SDK 签名用）
+   * GET /cgi-bin/get_jsapi_ticket?access_token=TOKEN
+   */
+  async getJsapiTicket(accessToken: string): Promise<string> {
+    const url = `${WECOM_API_BASE}/get_jsapi_ticket?access_token=${accessToken}`;
+    const data = await this.get(url);
+    return data.ticket;
+  }
+
+  private async get(url: string): Promise<any> {
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.errcode && data.errcode !== 0) {
+      this.logger.error(`企业微信 API 调用失败: ${data.errmsg} (errcode: ${data.errcode})`);
       throw new Error(`企业微信 API 错误: ${data.errmsg} (errcode: ${data.errcode})`);
     }
 

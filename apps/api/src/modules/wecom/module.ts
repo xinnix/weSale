@@ -5,6 +5,7 @@ import { WecomCryptoService } from './services/wecom-crypto.service';
 import { WecomConfigService } from './services/wecom-config.service';
 import { WecomMessageService } from './services/wecom-message.service';
 import { WecomEventService } from './services/wecom-event.service';
+import { ExternalContactService } from './services/external-contact.service';
 import { RedisService } from '../../shared/services/redis.service';
 
 @Module({
@@ -15,6 +16,7 @@ import { RedisService } from '../../shared/services/redis.service';
     WecomConfigService,
     WecomMessageService,
     WecomEventService,
+    ExternalContactService,
     RedisService,
   ],
   exports: [WecomApiService, WecomCryptoService, WecomConfigService],
