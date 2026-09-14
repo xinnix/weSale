@@ -34,6 +34,7 @@ model Admin {
   wecomConfigUpdatedBy WecomConfig[] @relation("WecomConfigUpdatedBy")
   productCreatedBy Product[] @relation("ProductCreatedBy")
   productUpdatedBy Product[] @relation("ProductUpdatedBy")
+  liveCodesCreatedBy LiveCode[] @relation("LiveCodeCreatedBy")
 
   @@index([email])
   @@index([username])
@@ -68,6 +69,7 @@ model User {
   refreshTokens UserRefreshToken[]
   addresses     Address[]
   orders        Order[]
+  contacts      Contact[]
 
   @@index([openid])
   @@index([email])
@@ -239,6 +241,7 @@ model WecomConfig {
   token          String
   encodingAESKey String
   description    String?
+  memberUserids  Json     @default("[]") // 接待成员白名单（企微 userid[]），侧边栏登录校验
   isActive       Boolean  @default(true)
   createdById    String?
   updatedById    String?
@@ -317,6 +320,11 @@ enum ContactStatus {
   ARCHIVED
 }
 
+enum LiveCodeStatus {
+  ACTIVE
+  DISABLED
+}
+
 enum SessionState {
   GREETING
   NEEDS_DISCOVERY
@@ -389,6 +397,8 @@ model Contact {
   id              String        @id @default(cuid())
   openId          String        @unique @map("open_id")
   unionId         String?       @map("union_id")
+  userId          String?       @map("user_id") // OneID 关联：与小程序 User 打通（订单归并反写）
+  externalUserId  String?       @unique @map("external_user_id") // 企微好友 external_userid（与 KF openId 同体系）
   nickname        String?
   avatarUrl       String?       @map("avatar_url")
   phone           String?
@@ -402,17 +412,50 @@ model Contact {
   lastActiveAt    DateTime      @default(now()) @map("last_active_at")
   convertedAt     DateTime?     @map("converted_at")
   paidAmountFen   Int?          @map("paid_amount_fen")
+  pointsBalance   Int           @default(0) @map("points_balance") // 积分余额（PointsLedger 流水驱动）
+  tags            Json          @default("[]") // 语义标签 [{name,source,refId,at}]，双写 SSOT
+  metadata        Json? // 公域订单属性 / 活码归因缓存
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
   sessions        ConversationSession[]
   orders          Order[]
+  ledgers         PointsLedger[]
+  user            User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([status])
   @@index([intentLevel])
   @@index([lastActiveAt])
   @@index([utmSource])
+  @@index([userId])
+  @@index([externalUserId])
   @@map("contacts")
+}
+
+// ============================================
+// 积分流水 (PointsLedger) —— 幂等记账，积分的唯一事实源
+// ============================================
+model PointsLedger {
+  id             String   @id @default(cuid())
+  contactId      String   @map("contact_id")
+  delta          Int // 入账 +n / 扣减 -n（权益兑换）
+  balanceAfter   Int      @map("balance_after") // 该笔后的余额快照
+  reason         String // 人类可读：'注册欢迎积分' / '订单奖励'
+  reasonCode     String // 程序枚举：REGISTER_WELCOME / ORDER_PAID / ORDER_REDEEM
+  refUserId      String?  @map("ref_user_id") // 注册路径关联 User
+  refOrderId     String?  @map("ref_order_id") // 订单奖励 / 权益订单
+  refLiveCodeId  String?  @map("ref_live_code_id")
+  idempotencyKey String   @unique @map("idempotency_key") // ${reasonCode}:${业务键}，防回调重放
+  metadata       Json?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  contact        Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId])
+  @@index([reasonCode])
+  @@index([refOrderId])
+  @@index([createdAt])
+  @@map("points_ledgers")
 }
 
 // ============================================
@@ -565,6 +608,29 @@ model Order {
   @@index([orderNo])
   @@index([createdAt])
   @@map("orders")
+}
+
+// ============================================
+// 企微「联系我」活码 (LiveCode) —— F8 站外获客
+// ============================================
+model LiveCode {
+  id                 String         @id @default(cuid())
+  name               String
+  state              String         @unique // ≤30 字节短码：lc_ + 6 位 base36（DB 内映射渠道）
+  contactWayConfigId String         @map("contact_way_config_id") // add_contact_way 返回的 config_id
+  qrUrl              String         @map("qr_url") // 企微生成的联系我二维码 URL
+  memberUserids      Json           @default("[]") // 接待成员 userid[]（企微行为：多人随机分配）
+  autoTags           Json           @default("[]") // [{name, tagId?}] add_contact_way 自动打标签规则
+  status             LiveCodeStatus @default(ACTIVE)
+  createdById        String?        @map("created_by_id")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+
+  createdBy          Admin?         @relation("LiveCodeCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([createdById])
+  @@map("live_codes")
 }
 
 // ============================================

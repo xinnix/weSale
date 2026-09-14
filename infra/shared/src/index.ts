@@ -85,6 +85,7 @@ export const PERMISSIONS = {
     ROLES: 'menu:roles',
     AGENTS: 'menu:agents',
     WECOM: 'menu:wecom',
+    LIVECODE: 'menu:livecode',
   },
   USER: {
     CREATE: 'user:create',
@@ -121,6 +122,12 @@ export const PERMISSIONS = {
     READ: 'order:read',
     REFUND: 'order:refund',
     SHIP: 'order:ship',
+  },
+  LIVECODE: {
+    CREATE: 'livecode:create',
+    READ: 'livecode:read',
+    UPDATE: 'livecode:update',
+    DELETE: 'livecode:delete',
   },
 } as const;
 
@@ -413,6 +420,8 @@ export const MessageTypeSchema = z.enum(['TEXT', 'IMAGE', 'LINK_CARD', 'SYSTEM_N
 export const CreateContactSchema = z.object({
   openId: z.string().min(1, 'openId 不能为空'),
   unionId: z.string().optional(),
+  userId: z.string().optional(),
+  externalUserId: z.string().optional(),
   nickname: z.string().optional(),
   avatarUrl: z.string().optional(),
   phone: z.string().optional(),
@@ -428,6 +437,20 @@ export const UpdateContactSchema = z.object({
   phone: z.string().optional(),
   status: ContactStatusSchema.optional(),
   intentLevel: IntentLevelSchema.optional(),
+  userId: z.string().nullable().optional(),
+  externalUserId: z.string().nullable().optional(),
+  pointsBalance: z.number().int().min(0).optional(),
+  tags: z
+    .array(
+      z.object({
+        name: z.string(),
+        source: z.string(), // CHANNEL / LIVECODE / BEHAVIOR
+        refId: z.string().optional(),
+        at: z.string().optional(),
+      }),
+    )
+    .optional(),
+  metadata: z.record(z.string(), z.any()).nullable().optional(),
 });
 
 export const ContactListQuerySchema = z.object({
@@ -586,6 +609,33 @@ export const UpdateAddressSchema = CreateAddressSchema.partial().extend({
 });
 
 // ============================================
+// LiveCode Schemas（企微「联系我」活码）
+// ============================================
+
+export const LiveCodeStatusSchema = z.enum(['ACTIVE', 'DISABLED']);
+
+export const CreateLiveCodeSchema = z.object({
+  name: z.string().min(1, '名称不能为空').max(50),
+  state: z.string().min(1).max(30, 'state 短码 ≤30 字节（企微限制）'),
+  contactWayConfigId: z.string().optional(),
+  qrUrl: z.string().optional(),
+  memberUserids: z.array(z.string()).optional().default([]),
+  autoTags: z
+    .array(z.object({ name: z.string(), tagId: z.string().optional() }))
+    .optional()
+    .default([]),
+});
+
+export const UpdateLiveCodeSchema = z.object({
+  name: z.string().min(1).max(50).optional(),
+  status: LiveCodeStatusSchema.optional(),
+  contactWayConfigId: z.string().nullable().optional(),
+  qrUrl: z.string().nullable().optional(),
+  memberUserids: z.array(z.string()).optional(),
+  autoTags: z.array(z.object({ name: z.string(), tagId: z.string().optional() })).optional(),
+});
+
+// ============================================
 // Product & Order 类型导出
 // ============================================
 
@@ -601,3 +651,6 @@ export type ShipOrderInput = z.infer<typeof ShipOrderSchema>;
 export type RefundOrderInput = z.infer<typeof RefundOrderSchema>;
 export type CreateAddressInput = z.infer<typeof CreateAddressSchema>;
 export type UpdateAddressInput = z.infer<typeof UpdateAddressSchema>;
+export type LiveCodeStatus = z.infer<typeof LiveCodeStatusSchema>;
+export type CreateLiveCodeInput = z.infer<typeof CreateLiveCodeSchema>;
+export type UpdateLiveCodeInput = z.infer<typeof UpdateLiveCodeSchema>;
