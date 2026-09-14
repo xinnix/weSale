@@ -48,6 +48,9 @@ coverage/
 .cache/
 .temp/
 
+# 本地工具目录（zcode：commands 绝对路径软链 + 会话 plans，不入库）
+.zcode/
+
 # Database backups
 backups/
 
