@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import OrderHistory from '../components/OrderHistory';
-import QuickActions from '../components/QuickActions';
+import CopilotPanel from '../components/CopilotPanel';
 import RecentSession from '../components/RecentSession';
 import TagChips from '../components/TagChips';
 import { fetchJsapiConfig, fetchProfile, JsapiConfig, ProfileResponse } from '../api/profile';
@@ -113,7 +113,7 @@ export default function ProfilePanel({ token, onLogout }: Props) {
         ))}
       </section>
 
-      <QuickActions wx={wx} profile={profile} />
+      <CopilotPanel token={token} wx={wx} externalUserId={externalUserId!} />
 
       <OrderHistory orders={profile.orders} />
       <RecentSession messages={profile.recentMessages} />

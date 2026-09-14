@@ -268,3 +268,63 @@ button:disabled {
 .message .content {
   word-break: break-all;
 }
+
+/* Copilot 面板 */
+.copilot-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.copilot-head h3 {
+  margin: 0;
+}
+.intent-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+.intent-tag {
+  background: var(--primary-weak);
+  color: var(--primary);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.psych {
+  color: var(--text-sub);
+}
+.strategy-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+.strategy-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+.strategy-actions {
+  display: flex;
+  gap: 6px;
+}
+button.mini {
+  padding: 2px 10px;
+  font-size: 12px;
+}
+.strategy-body {
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 20px;
+}
+.ghost {
+  color: var(--text-sub);
+}
