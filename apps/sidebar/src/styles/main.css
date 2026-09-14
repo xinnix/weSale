@@ -1,0 +1,270 @@
+:root {
+  --bg: #f5f6f8;
+  --card: #ffffff;
+  --text: #1f2329;
+  --text-sub: #8a9099;
+  --primary: #2b7fff;
+  --primary-weak: rgba(43, 127, 255, 0.1);
+  --border: #eceef1;
+  --tag-behavior: #e6f4ff;
+  --tag-behavior-text: #1d6fe3;
+  --tag-channel: #f0f5ff;
+  --tag-channel-text: #597ef7;
+  --tag-livecode: #f6ffed;
+  --tag-livecode-text: #389e0d;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+#root {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+/* 登录/错误/加载 */
+.login-wrap,
+.center {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+}
+.login-wrap h1 {
+  font-size: 20px;
+}
+.sub {
+  color: var(--text-sub);
+  font-size: 13px;
+  max-width: 260px;
+}
+.loading {
+  color: var(--text-sub);
+}
+.error-text {
+  color: #e33;
+}
+
+button {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+button.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+button.link {
+  border: none;
+  background: transparent;
+  color: var(--text-sub);
+  padding: 0;
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 主面板 */
+.panel {
+  padding-bottom: 32px;
+}
+
+.contact-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--card);
+}
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--primary-weak);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.contact-header .meta {
+  flex: 1;
+}
+.contact-header .name {
+  font-size: 16px;
+  font-weight: 600;
+}
+.contact-header .sub {
+  font-size: 13px;
+  max-width: none;
+  text-align: left;
+}
+
+/* 标签 */
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 16px;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+}
+.tags.empty {
+  color: var(--text-sub);
+  font-size: 13px;
+}
+.tag {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+.tag-behavior {
+  background: var(--tag-behavior);
+  color: var(--tag-behavior-text);
+}
+.tag-channel,
+.tag-CHANNEL {
+  background: var(--tag-channel);
+  color: var(--tag-channel-text);
+}
+.tag-livecode,
+.tag-LIVECODE {
+  background: var(--tag-livecode);
+  color: var(--tag-livecode-text);
+}
+
+/* 统计卡 */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+}
+.stat {
+  text-align: center;
+}
+.stat .value {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--primary);
+}
+.stat .label {
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+/* section 与列表 */
+.section {
+  background: var(--card);
+  margin: 10px 12px;
+  border-radius: 8px;
+  padding: 14px;
+}
+.section h3 {
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+.empty {
+  color: var(--text-sub);
+  font-size: 13px;
+  padding: 8px 0;
+}
+.suggestion {
+  background: var(--primary-weak);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+.actions-row {
+  display: flex;
+  gap: 8px;
+}
+.actions-row button {
+  flex: 1;
+}
+.status {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-sub);
+}
+.hint {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-sub);
+}
+
+.orders,
+.messages {
+  list-style: none;
+}
+.order {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.order:last-child {
+  border-bottom: none;
+}
+.order-name {
+  font-weight: 500;
+}
+.order-status {
+  font-size: 12px;
+  color: var(--primary);
+}
+.order-sub {
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.message {
+  display: flex;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 13px;
+}
+.message .role {
+  flex-shrink: 0;
+  color: var(--text-sub);
+  font-size: 12px;
+}
+.message.assistant .role {
+  color: var(--primary);
+}
+.message .content {
+  word-break: break-all;
+}
