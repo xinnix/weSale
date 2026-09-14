@@ -38,7 +38,7 @@ watch(
 
       <!-- Logo + 动画 -->
       <view class="loading-logo-wrapper">
-        <image class="loading-logo" src="/static/logo.png" mode="aspectFit" />
+        <image class="loading-logo" src="/static/logo-mark.png" mode="aspectFit" />
         <view class="loading-pulse" />
       </view>
 

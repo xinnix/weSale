@@ -127,7 +127,7 @@ function openResult(order: MallOrder) {
         <view class="mt-3 flex gap-3">
           <image
             class="h-120rpx w-120rpx rounded-lg"
-            :src="order.product?.coverImage || '/static/logo.png'"
+            :src="order.product?.coverImage || '/static/logo-mark.png'"
             mode="aspectFill"
           />
           <view class="flex-1">

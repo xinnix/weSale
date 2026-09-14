@@ -120,7 +120,7 @@ function goToDetail(product: MallProduct) {
         >
           <image
             class="h-320rpx w-full"
-            :src="product.coverImage || '/static/logo.png'"
+            :src="product.coverImage || '/static/logo-mark.png'"
             mode="aspectFill"
           />
           <view class="p-3">

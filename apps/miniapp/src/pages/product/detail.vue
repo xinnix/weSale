@@ -53,7 +53,7 @@ function buyNow() {
     <template v-else-if="product">
       <image
         class="h-560rpx w-full"
-        :src="product.coverImage || '/static/logo.png'"
+        :src="product.coverImage || '/static/logo-mark.png'"
         mode="aspectFill"
       />
 
