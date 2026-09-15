@@ -112,8 +112,9 @@ export class SidebarAuthService {
   }
 
   /**
-   * JS-SDK 签名配置（侧边栏 ww.config 用）
-   * 走客户联系应用 token 取 get_jsapi_ticket → sha1 签名
+   * JS-SDK 签名配置（侧边栏 ww.config / ww.agentConfig 用）
+   * 必须用「聊天工具栏所属自建应用」的 ticket（与 ww.config 的 agentid 一致），
+   * 不能用客户联系应用——否则签名校验失败、JS-SDK 接口不可用
    */
   async getJsapiConfig(url: string): Promise<{
     appId: string;
@@ -123,9 +124,9 @@ export class SidebarAuthService {
     signature: string;
   }> {
     const corpId = this.getCorpId();
-    const secret = this.config.get<string>('WX_WORK_SIDEBAR_SECRET', '');
+    const secret = this.config.get<string>('WX_WORK_SECRET', '');
     if (!secret) {
-      throw new UnauthorizedException('未配置 WX_WORK_SIDEBAR_SECRET（客户联系应用）');
+      throw new UnauthorizedException('未配置 WX_WORK_SECRET（自建应用）');
     }
     const accessToken = await this.wecomApi.getAccessToken(corpId, secret);
     const ticket = await this.wecomApi.getJsapiTicket(accessToken);

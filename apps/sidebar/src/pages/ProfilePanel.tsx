@@ -69,7 +69,15 @@ export default function ProfilePanel({ token, onLogout }: Props) {
   }
 
   if (loading || !profile) {
-    return <div className="center feedback loading">正在加载客户画像…</div>;
+    const diag = wx.error || error;
+    return (
+      <div className="center feedback loading">
+        <p>正在加载客户画像…</p>
+        <p className="diag">JS-SDK 阶段：{wx.stage}</p>
+        {diag && <p className="error-text diag">{diag}</p>}
+        {diag && <button onClick={() => window.location.reload()}>重试</button>}
+      </div>
+    );
   }
 
   const stats = [

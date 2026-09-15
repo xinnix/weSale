@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import * as crypto from 'crypto';
 import { RedisService } from '../../../shared/services/redis.service';
 
 const WECOM_API_BASE = 'https://qyapi.weixin.qq.com/cgi-bin';
@@ -11,11 +12,12 @@ export class WecomApiService {
 
   /**
    * 获取 access_token（带 Redis 缓存）
-   * 缓存 key: wecom:access_token:{corpId}
+   * 缓存 key: wecom:access_token:{corpId}:{secretFp}（含 secret 指纹，避免多应用共用串用）
    * TTL: expires_in * 0.9（90% 安全裕度）
    */
   async getAccessToken(corpId: string, secret: string): Promise<string> {
-    const cacheKey = `wecom:access_token:${corpId}`;
+    const secretFp = crypto.createHash('md5').update(secret).digest('hex').slice(0, 8);
+    const cacheKey = `wecom:access_token:${corpId}:${secretFp}`;
 
     try {
       const cached = await this.redisService.get<string>(cacheKey);

@@ -90,9 +90,21 @@ async function bootstrap() {
 
   // 侧边栏 H5 静态托管（同域：<domain>/sidebar/，供企微聊天工具栏加载）
   const sidebarDist = path.resolve(__dirname, '../../sidebar/dist');
-  app.use('/sidebar', express.static(sidebarDist, { index: 'index.html' }));
+  app.use(
+    '/sidebar',
+    express.static(sidebarDist, {
+      index: 'index.html',
+      setHeaders: (res, filePath) => {
+        // index.html 禁缓存（企微客户端会缓存旧版，导致前端不更新）
+        if (filePath.endsWith('index.html')) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        }
+      },
+    }),
+  );
   // SPA 兜底：/sidebar 下非静态资源一律回 index.html
   app.use('/sidebar', (_req, res, next) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(sidebarDist, 'index.html'), (err) => {
       if (err) next();
     });
