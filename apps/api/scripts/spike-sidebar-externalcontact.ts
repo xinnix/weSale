@@ -46,27 +46,33 @@ async function main() {
   const contact = await prisma.contact.findFirst({ orderBy: { updatedAt: 'desc' } });
   await prisma.$disconnect();
 
-  if (contact) {
-    const target = contact.externalUserId ?? contact.openId;
+  // 真实客户 ID 优先从 env 覆盖（demo 造的 wm_demo_customer 是假值会被企微拒）
+  const target = process.env.SPIKE_EXTERNAL_USERID || contact?.externalUserId || contact?.openId;
+  if (target) {
     try {
       const detail = await wecomApi.getExternalContact(token, target);
       const info = detail?.external_contact;
       console.log(
-        `[spike] ✅ getExternalContact: name=${info?.name ?? '-'}, avatar=${info?.avatar ? '有' : '无'}, isFollow=${Array.isArray(detail?.follow_user) && detail.follow_user.length > 0}`,
+        `[spike] ✅ getExternalContact(${target}): name=${info?.name ?? '-'}, isFollow=${Array.isArray(detail?.follow_user) && detail.follow_user.length > 0}`,
       );
     } catch (e: any) {
-      console.log(`[spike] ⚠️ getExternalContact: ${e.message}`);
+      console.log(`[spike] ⚠️ getExternalContact(${target}): ${e.message}`);
+      console.log(
+        '[spike]   提示：40096 说明该 ID 非真实企微客户；用 SPIKE_EXTERNAL_USERID=<真实ID> 覆盖',
+      );
     }
   } else {
     console.log('[spike] ⚠️ 无 Contact 记录，跳过 getExternalContact');
   }
 
   // 3. add_contact_way 活码（type=2 多人 / scene=2 二维码）+ 立即清理
+  const memberUserid = process.env.SPIKE_MEMBER_USERID || 'xinnix';
   try {
     const state = `spike_${Date.now().toString(36).slice(-6)}`;
     const created = await wecomApi.addContactWay(token, {
       type: 2,
       scene: 2,
+      user: [memberUserid], // 接待成员（81012 = 未指定成员）
       state,
       remark: 'spike 活码（自动清理）',
     });
@@ -80,7 +86,7 @@ async function main() {
   }
 
   console.log(
-    '[spike] errcode 参考: 60011=无该应用权限 48001=API 未授权(未开通客户联系) 41059=缺少标签 40058=参数错误',
+    '[spike] errcode: 60011=无应用权限 48001=未开通客户联系 60020=IP未白名单 40096=客户ID非法 81012=未指定接待成员',
   );
 }
 
