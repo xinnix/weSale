@@ -20,7 +20,9 @@ export default function RecentSession({ messages }: { messages: Msg[] }) {
       <ul className="messages">
         {messages.map((m, i) => (
           <li key={i} className={`message ${m.role === 'assistant' ? 'assistant' : 'customer'}`}>
-            <span className="role">{m.role === 'assistant' ? '客服' : '顾客'}</span>
+            <span className="role">
+              {m.role === 'note' ? '📋 粘贴' : m.role === 'assistant' ? '客服' : '顾客'}
+            </span>
             <span className="content">{m.content}</span>
           </li>
         ))}

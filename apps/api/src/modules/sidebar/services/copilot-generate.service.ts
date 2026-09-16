@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { PrismaService } from '../../../prisma/prisma.service';
 import { CopilotContext, CopilotLlmService } from './copilot-llm.service';
 import { SidebarProfileService } from './sidebar-profile.service';
 
@@ -15,6 +16,13 @@ export type CopilotEvent =
 
 const STRATEGIES = ['A_RATIONAL', 'B_EMOTIONAL', 'C_UPSELL'];
 
+const INTENT_LABELS: Record<string, string> = {
+  USAGE_CONSULTATION: '使用咨询',
+  OBJECTION_PRICE: '价格异议',
+  SAFETY_CONCERN: '安全顾虑',
+  COMPLAINT: '投诉',
+};
+
 @Injectable()
 export class CopilotGenerateService {
   private readonly logger = new Logger(CopilotGenerateService.name);
@@ -22,6 +30,7 @@ export class CopilotGenerateService {
   constructor(
     private readonly llm: CopilotLlmService,
     private readonly profileService: SidebarProfileService,
+    private readonly prisma: PrismaService,
   ) {}
 
   /**
@@ -34,11 +43,20 @@ export class CopilotGenerateService {
     signal?: AbortSignal,
     pastedConversation?: string,
   ): AsyncGenerator<CopilotEvent> {
-    const { ctx, generationId } = await this.prepare(externalUserId, member, pastedConversation);
+    const { ctx, generationId, pastedId, contactId } = await this.prepare(
+      externalUserId,
+      member,
+      pastedConversation,
+    );
 
     // 1. 意图分类（先返回，前端先渲染标签）
     const analysis = await this.llm.classifyIntent(ctx);
     yield { type: 'intent', category: analysis.category, psychology: analysis.psychology };
+
+    // 1.5 粘贴对话资产化：回填意图 + 意图自动写入客户标签（身份标签闭环）
+    if (pastedId && contactId) {
+      await this.finalizePasted(pastedId, contactId, analysis.category);
+    }
 
     // 2. 3 策略并行流：用队列把并行 producer 汇聚到单一 generator
     const queue: CopilotEvent[] = [];
@@ -81,12 +99,20 @@ export class CopilotGenerateService {
     yield { type: 'done', generationId };
   }
 
-  /** 组装生成上下文 + 生成 id（复用画像聚合的数据源） */
+  /**
+   * 组装生成上下文 + 生成 id（复用画像聚合的数据源）
+   * 粘贴对话在此落库（资产化）：进"最近会话" + 供后期统一分析
+   */
   private async prepare(
     externalUserId: string,
     member: { userId: string; corpId: string },
     pastedConversation?: string,
-  ): Promise<{ ctx: CopilotContext; generationId: string }> {
+  ): Promise<{
+    ctx: CopilotContext;
+    generationId: string;
+    pastedId?: string;
+    contactId?: string;
+  }> {
     const profile = await this.profileService.getProfile(externalUserId, member);
 
     const ctx: CopilotContext = {
@@ -101,7 +127,61 @@ export class CopilotGenerateService {
       pastedConversation: pastedConversation?.trim() || undefined,
     };
 
-    return { ctx, generationId: `gen_${randomUUID().replace(/-/g, '').slice(0, 16)}` };
+    const generationId = `gen_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
+
+    let pastedId: string | undefined;
+    if (ctx.pastedConversation) {
+      try {
+        const row = await this.prisma.pastedConversation.create({
+          data: {
+            memberUserId: member.userId,
+            corpId: member.corpId,
+            externalUserId,
+            contactId: profile.contact.id,
+            content: ctx.pastedConversation.slice(0, 5000),
+            generationId,
+          },
+        });
+        pastedId = row.id;
+      } catch (err: any) {
+        this.logger.warn(`粘贴对话落库失败: ${err.message}`);
+      }
+    }
+
+    return { ctx, generationId, pastedId, contactId: profile.contact.id };
+  }
+
+  /** 意图分类结果回填粘贴记录 + 意图标签自动写入 Contact.tags（去重，GENERAL 不打标） */
+  private async finalizePasted(
+    pastedId: string,
+    contactId: string,
+    category: string,
+  ): Promise<void> {
+    try {
+      await this.prisma.pastedConversation.update({
+        where: { id: pastedId },
+        data: { intentCategory: category },
+      });
+
+      const label = INTENT_LABELS[category];
+      if (!label) return;
+
+      const contact = await this.prisma.contact.findUnique({
+        where: { id: contactId },
+        select: { tags: true },
+      });
+      const tags = Array.isArray(contact?.tags) ? (contact!.tags as any[]) : [];
+      if (tags.some((t) => t.source === 'BEHAVIOR' && t.name === label)) return;
+
+      await this.prisma.contact.update({
+        where: { id: contactId },
+        data: {
+          tags: [...tags, { name: label, source: 'BEHAVIOR', at: new Date().toISOString() }] as any,
+        },
+      });
+    } catch (err: any) {
+      this.logger.warn(`粘贴对话意图回填/打标失败: ${err.message}`);
+    }
   }
 
   private buildOrdersSummary(stats: any): string {

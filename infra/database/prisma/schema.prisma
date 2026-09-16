@@ -499,6 +499,27 @@ model SendEvent {
 }
 
 // ============================================
+// 粘贴对话 (PastedConversation) —— 销售手动粘贴的实时私聊片段
+// 企微不开放私聊读取，由销售粘贴入库：供侧边栏"最近会话"与后期统一分析/标签
+// ============================================
+model PastedConversation {
+  id             String   @id @default(cuid())
+  memberUserId   String   @map("member_user_id") // 粘贴的企微成员
+  corpId         String   @map("corp_id")
+  externalUserId String   @map("external_user_id") // 客户
+  contactId      String?  @map("contact_id")
+  content        String   @db.Text // 粘贴的对话原文
+  generationId   String?  @map("generation_id") // 关联的 AI 生成
+  intentCategory String?  @map("intent_category") // 本次意图分类结果
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([externalUserId])
+  @@index([contactId])
+  @@index([createdAt])
+  @@map("pasted_conversations")
+}
+
+// ============================================
 // 对话会话 (ConversationSession)
 // ============================================
 model ConversationSession {

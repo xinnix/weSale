@@ -24,7 +24,7 @@ const profile = {
 
 describe('CopilotGenerateService', () => {
   it('事件序列：intent → 3 策略 delta → done', async () => {
-    const service = new CopilotGenerateService(llm, profile);
+    const service = new CopilotGenerateService(llm, profile, {} as any);
     const events: CopilotEvent[] = [];
     for await (const e of service.generateStream('wm_x', { userId: 'u', corpId: 'c' })) {
       events.push(e);
@@ -55,7 +55,7 @@ describe('CopilotGenerateService', () => {
       },
     } as any;
 
-    const service = new CopilotGenerateService(partialLlm, profile);
+    const service = new CopilotGenerateService(partialLlm, profile, {} as any);
     const events: CopilotEvent[] = [];
     for await (const e of service.generateStream('wm_x', { userId: 'u', corpId: 'c' })) {
       events.push(e);

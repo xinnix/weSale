@@ -48,12 +48,27 @@ export class SidebarProfileService {
       orderBy: { createdAt: 'desc' },
     });
 
-    // 最近 KF 会话摘要（own DB 全量入库的会话记录，企微无 API 可读历史）
-    const recentMessages = await this.prisma.conversationMessage.findMany({
+    // 最近会话摘要：KF 会话记录 + 销售粘贴的实时对话（合并按时间排序，企微无 API 可读历史）
+    const kfMessages = await this.prisma.conversationMessage.findMany({
       where: { externalUserId },
       orderBy: { createdAt: 'desc' },
       take: 10,
     });
+    const pastedRows = await this.prisma.pastedConversation.findMany({
+      where: { externalUserId },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    });
+    const recentMessages = [
+      ...pastedRows.map((p) => ({
+        role: 'note' as const,
+        content: p.content,
+        createdAt: p.createdAt,
+      })),
+      ...kfMessages,
+    ]
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, 10);
 
     const orders = this.mergeOrders(user?.orders ?? [], contactOrders);
     const behaviorTags = this.tagsService.deriveBehaviorTags(orders as any);
