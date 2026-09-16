@@ -12,12 +12,24 @@ async function parseError(res: Response): Promise<never> {
   throw new Error(message);
 }
 
+/**
+ * 后端 TransformInterceptor 把响应包成 {success, statusCode, data, timestamp}，
+ * 这里统一解包 data；非包装响应原样返回
+ */
+async function unpack<T>(res: Response): Promise<T> {
+  const json = await res.json();
+  if (json && typeof json === 'object' && 'data' in json) {
+    return (json as { data: T }).data;
+  }
+  return json as T;
+}
+
 export async function apiGet<T>(path: string, token: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) await parseError(res);
-  return res.json();
+  return unpack<T>(res);
 }
 
 export async function apiPost<T>(path: string, token: string, body?: unknown): Promise<T> {
@@ -27,5 +39,5 @@ export async function apiPost<T>(path: string, token: string, body?: unknown): P
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) await parseError(res);
-  return res.json();
+  return unpack<T>(res);
 }
