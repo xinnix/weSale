@@ -47,7 +47,13 @@ export class OSSUploader {
    */
   static async upload(file: File, type: UploadType): Promise<UploadResult> {
     // 1. 获取上传凭证
-    const credentials = await trpcClient.upload.getUploadCredentials.query({ type });
+    let credentials: UploadCredentials;
+    try {
+      credentials = await trpcClient.upload.getUploadCredentials.query({ type });
+    } catch {
+      // 本地存储模式不支持客户端直传 → 走服务端中转上传
+      return this.uploadViaServer(file, type);
+    }
 
     // 2. 生成文件名
     const timestamp = Date.now();
@@ -87,6 +93,33 @@ export class OSSUploader {
       fileName: file.name,
       fileSize: file.size,
     };
+  }
+
+  /**
+   * 本地存储模式：服务端中转上传（POST /api/upload/image，multipart）
+   * 返回 url 形如 {SERVER_URL}/{type}/{fileName}
+   */
+  static async uploadViaServer(file: File, type: UploadType): Promise<UploadResult> {
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) throw new Error('登录已失效，请重新登录');
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', type);
+
+    const res = await fetch('/api/upload/image', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: formData,
+    });
+    if (!res.ok) {
+      throw new Error(`上传失败: HTTP ${res.status}`);
+    }
+    const json = await res.json();
+    const data = json?.data ?? json;
+    if (!data?.url) throw new Error('上传响应缺少 url');
+
+    return { url: data.url, fileName: file.name, fileSize: file.size };
   }
 
   /**
