@@ -21,6 +21,7 @@ export default function CopilotPanel({ token, wx, externalUserId }: Props) {
   const { intent, strategies, generationId, running, error, start } = useCopilotStream(token);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [pasted, setPasted] = useState('');
 
   const hasContent = STRATEGY_ORDER.some((s) => strategies[s]);
   const psychology = intent?.psychology;
@@ -68,10 +69,22 @@ export default function CopilotPanel({ token, wx, externalUserId }: Props) {
     <section className="section copilot">
       <div className="copilot-head">
         <h3>AI 辅助话术</h3>
-        <button className="primary" disabled={running} onClick={() => start(externalUserId)}>
+        <button
+          className="primary"
+          disabled={running}
+          onClick={() => start(externalUserId, pasted.trim() || undefined)}
+        >
           {running ? '生成中…' : hasContent ? '重新生成' : '分析并生成'}
         </button>
       </div>
+
+      <textarea
+        className="paste-box"
+        rows={3}
+        placeholder="可选：粘贴当前与客户的对话，AI 将据此判断意图并生成更贴的回复"
+        value={pasted}
+        onChange={(e) => setPasted(e.target.value)}
+      />
 
       {intent && (
         <div className="intent-bar">

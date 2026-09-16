@@ -32,8 +32,9 @@ export class CopilotGenerateService {
     externalUserId: string,
     member: { userId: string; corpId: string },
     signal?: AbortSignal,
+    pastedConversation?: string,
   ): AsyncGenerator<CopilotEvent> {
-    const { ctx, generationId } = await this.prepare(externalUserId, member);
+    const { ctx, generationId } = await this.prepare(externalUserId, member, pastedConversation);
 
     // 1. 意图分类（先返回，前端先渲染标签）
     const analysis = await this.llm.classifyIntent(ctx);
@@ -84,6 +85,7 @@ export class CopilotGenerateService {
   private async prepare(
     externalUserId: string,
     member: { userId: string; corpId: string },
+    pastedConversation?: string,
   ): Promise<{ ctx: CopilotContext; generationId: string }> {
     const profile = await this.profileService.getProfile(externalUserId, member);
 
@@ -96,6 +98,7 @@ export class CopilotGenerateService {
         role: m.role === 'assistant' ? 'assistant' : 'user',
         content: m.content,
       })),
+      pastedConversation: pastedConversation?.trim() || undefined,
     };
 
     return { ctx, generationId: `gen_${randomUUID().replace(/-/g, '').slice(0, 16)}` };

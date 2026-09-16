@@ -15,7 +15,7 @@ export interface CopilotState {
   generationId: string | null;
   running: boolean;
   error: string | null;
-  start: (externalUserId: string) => Promise<void>;
+  start: (externalUserId: string, pastedConversation?: string) => Promise<void>;
   reset: () => void;
 }
 
@@ -35,27 +35,33 @@ export function useCopilotStream(token: string): CopilotState {
   }, []);
 
   const start = useCallback(
-    async (externalUserId: string) => {
+    async (externalUserId: string, pastedConversation?: string) => {
       setRunning(true);
       setError(null);
       setIntent(null);
       setStrategies(EMPTY);
       setGenerationId(null);
       try {
-        await analyzeStream(token, externalUserId, (e) => {
-          if (e.type === 'intent') {
-            setIntent({ category: e.category || 'GENERAL', psychology: e.psychology });
-          } else if (e.type === 'strategy' && e.strategy && e.delta) {
-            const key = e.strategy as keyof StrategyText;
-            if (STRATEGY_ORDER.includes(key as any)) {
-              setStrategies((prev) => ({ ...prev, [key]: prev[key] + e.delta }));
+        await analyzeStream(
+          token,
+          externalUserId,
+          (e) => {
+            if (e.type === 'intent') {
+              setIntent({ category: e.category || 'GENERAL', psychology: e.psychology });
+            } else if (e.type === 'strategy' && e.strategy && e.delta) {
+              const key = e.strategy as keyof StrategyText;
+              if (STRATEGY_ORDER.includes(key as any)) {
+                setStrategies((prev) => ({ ...prev, [key]: prev[key] + e.delta }));
+              }
+            } else if (e.type === 'done') {
+              setGenerationId(e.generationId || null);
+            } else if (e.type === 'error' && !e.strategy) {
+              setError(e.message || '生成失败');
             }
-          } else if (e.type === 'done') {
-            setGenerationId(e.generationId || null);
-          } else if (e.type === 'error' && !e.strategy) {
-            setError(e.message || '生成失败');
-          }
-        });
+          },
+          undefined,
+          pastedConversation,
+        );
       } catch (err: any) {
         setError(err.message || '生成失败');
       } finally {

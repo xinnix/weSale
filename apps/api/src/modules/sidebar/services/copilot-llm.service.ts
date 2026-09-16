@@ -10,6 +10,8 @@ export interface CopilotContext {
   tags: string[];
   ordersSummary?: string;
   recentMessages: { role: string; content: string }[];
+  /** 销售实时粘贴的对话片段（最高优先级上下文，替代拿不到的私聊记录） */
+  pastedConversation?: string;
 }
 
 export interface IntentAnalysis {
@@ -183,14 +185,19 @@ export class CopilotLlmService {
     if (ctx.tags?.length) parts.push(`已有标签：${ctx.tags.join('、')}`);
     if (ctx.ordersSummary) parts.push(`消费画像：${ctx.ordersSummary}`);
 
-    if (ctx.recentMessages?.length) {
+    if (ctx.pastedConversation) {
+      // 实时粘贴的对话是最高优先级上下文（私聊记录企微不开放，由销售手动粘贴）
+      parts.push(
+        `当前实时对话（销售刚从聊天窗口粘贴）：\n${ctx.pastedConversation.slice(0, 2000)}`,
+      );
+    } else if (ctx.recentMessages?.length) {
       const convo = ctx.recentMessages
         .slice(-6)
         .map((m) => `${m.role === 'assistant' ? '客服' : '客户'}：${m.content}`)
         .join('\n');
       parts.push(`最近会话：\n${convo}`);
     } else {
-      parts.push('最近会话：（无 KF 会话记录，请仅依据画像生成）');
+      parts.push('最近会话：（无会话记录，请仅依据画像生成）');
     }
     return parts.join('\n');
   }

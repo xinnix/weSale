@@ -286,6 +286,21 @@ button:disabled {
 .copilot-head h3 {
   margin: 0;
 }
+.paste-box {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  margin-bottom: 10px;
+  box-sizing: border-box;
+}
+.paste-box:focus {
+  outline: none;
+  border-color: var(--primary);
+}
 .intent-bar {
   display: flex;
   flex-wrap: wrap;

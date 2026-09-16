@@ -44,15 +44,16 @@ export class SidebarClientController {
   /**
    * AI 生成（SSE）：意图识别 + 3 策略并行流式话术
    * 事件：intent → strategy(A/B/C) 增量 → done
+   * 可选 pastedConversation：销售粘贴的实时对话（私聊记录企微不开放，人工粘贴替代）
    */
   @Post('analyze')
   async analyze(
-    @Body('externalUserId') externalUserId: string,
+    @Body() body: { externalUserId?: string; pastedConversation?: string },
     @CurrentMember() member: { userId: string; corpId: string },
     @Req() req: Request,
     @Res() res: Response,
   ) {
-    if (!externalUserId) throw new BadRequestException('缺少 externalUserId');
+    if (!body?.externalUserId) throw new BadRequestException('缺少 externalUserId');
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -65,9 +66,10 @@ export class SidebarClientController {
 
     try {
       for await (const event of this.copilotGenerateService.generateStream(
-        externalUserId,
+        body.externalUserId,
         member,
         controller.signal,
+        body.pastedConversation,
       )) {
         res.write(`data: ${JSON.stringify(event)}\n\n`);
       }

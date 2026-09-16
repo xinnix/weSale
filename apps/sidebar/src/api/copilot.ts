@@ -29,17 +29,22 @@ export const INTENT_LABELS: Record<string, string> = {
 /**
  * SSE 消费：POST /api/sidebar/analyze，逐事件回调
  * 事件序列：intent → strategy(A/B/C delta) → done
+ * pastedConversation：销售粘贴的实时对话（可选，作为最高优先级上下文）
  */
 export async function analyzeStream(
   token: string,
   externalUserId: string,
   onEvent: (e: CopilotEvent) => void,
   signal?: AbortSignal,
+  pastedConversation?: string,
 ): Promise<void> {
   const res = await fetch('/api/sidebar/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ externalUserId }),
+    body: JSON.stringify({
+      externalUserId,
+      pastedConversation: pastedConversation?.trim() || undefined,
+    }),
     signal,
   });
   if (!res.ok || !res.body) {
