@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { Form, InputNumber, Select } from 'antd';
 import { StandardForm } from '../../../shared/components/StandardForm';
 import type { FieldDefinition } from '../../../shared/components/StandardForm/types';
@@ -60,6 +59,8 @@ const fields: FieldDefinition[] = [
         name="priceFen"
         label="价格（元）"
         rules={[{ required: true, message: '请输入价格' }]}
+        getValueProps={(v) => ({ value: typeof v === 'number' ? v / 100 : v })}
+        normalize={(v) => Math.round(v * 100)}
       >
         <InputNumber
           min={0.01}
@@ -77,7 +78,12 @@ const fields: FieldDefinition[] = [
     type: 'number',
     tooltip: '划线价，用于展示优惠',
     render: () => (
-      <Form.Item name="originalPriceFen" label="原价（元）">
+      <Form.Item
+        name="originalPriceFen"
+        label="原价（元）"
+        getValueProps={(v) => ({ value: typeof v === 'number' ? v / 100 : v })}
+        normalize={(v) => (v === null || v === undefined ? v : Math.round(v * 100))}
+      >
         <InputNumber
           min={0.01}
           precision={2}
@@ -144,14 +150,5 @@ const fields: FieldDefinition[] = [
 ];
 
 export function ProductForm({ form, isEdit }: FormProps) {
-  useEffect(() => {
-    if (!isEdit) return;
-    const priceFen = form.getFieldValue('priceFen');
-    const originalPriceFen = form.getFieldValue('originalPriceFen');
-    if (typeof priceFen === 'number') form.setFieldValue('priceFen', priceFen / 100);
-    if (typeof originalPriceFen === 'number')
-      form.setFieldValue('originalPriceFen', originalPriceFen / 100);
-  }, [isEdit]); // eslint-disable-line react-hooks/exhaustive-deps
-
   return <StandardForm form={form} isEdit={isEdit} fields={fields} />;
 }
