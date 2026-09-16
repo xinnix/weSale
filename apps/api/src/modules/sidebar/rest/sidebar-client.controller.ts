@@ -100,13 +100,10 @@ export class SidebarClientController {
     return this.productsService.listProducts();
   }
 
-  /** 组装某商品的小程序卡片发送参数（thumb_media_id 等） */
+  /** 组装某商品的小程序卡片发送参数（appid/title/imgUrl/page） */
   @Get('products/:id/card')
-  productCard(
-    @Param('id') id: string,
-    @CurrentMember() member: { userId: string; corpId: string },
-  ) {
-    return this.productsService.getProductCard(id, member.corpId);
+  productCard(@Param('id') id: string) {
+    return this.productsService.getProductCard(id);
   }
 
   /** JS-SDK 签名（侧边栏 ww.config 前置） */

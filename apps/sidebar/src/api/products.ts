@@ -10,8 +10,8 @@ export interface ProductBrief {
 export interface ProductCard {
   appid: string; // 小程序 appid
   title: string;
-  pagePath: string;
-  thumbMediaId: string;
+  imgUrl: string; // 卡片封面 URL（ww.sendChatMessage 用 img_url）
+  page: string; // 小程序页面路径
 }
 
 export function fetchProducts(token: string): Promise<ProductBrief[]> {

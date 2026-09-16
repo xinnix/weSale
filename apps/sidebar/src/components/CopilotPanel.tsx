@@ -46,8 +46,8 @@ export default function CopilotPanel({ token, wx, externalUserId }: Props) {
         miniprogram: {
           appid: card.appid,
           title: card.title,
-          pagepath: card.pagePath,
-          thumb_media_id: card.thumbMediaId,
+          img_url: card.imgUrl,
+          page: card.page,
         },
       });
       setStatus(`已调起发送（${p.name} 卡片），请在企微客户端内确认`);

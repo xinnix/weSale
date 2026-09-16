@@ -17,7 +17,7 @@ export interface WxAgent {
   sendChatMessage: (message: {
     msgtype: 'text' | 'miniprogram';
     text?: { content: string };
-    miniprogram?: { appid: string; title: string; pagepath: string; thumb_media_id: string };
+    miniprogram?: { appid: string; title: string; img_url: string; page: string };
   }) => Promise<{ errMsg: string }>;
 }
 
@@ -93,20 +93,29 @@ export function useWxAgent(token: string): WxAgent {
   }, [token, ready, stage]);
 
   const getCurExternalContact = useCallback(async () => {
-    const r = await sdkGetCurExternalContact();
-    if (r.userId) return { userId: r.userId };
-    throw new Error(r.errMsg || `errCode=${(r as any).errCode ?? '?'}`);
+    try {
+      const r = await sdkGetCurExternalContact();
+      if (r.userId) return { userId: r.userId };
+      throw new Error(r.errMsg || `errCode=${(r as any).errCode ?? '?'}`);
+    } catch (e: any) {
+      // 新版 SDK 失败时 reject 普通对象（{errCode,errMsg}），规范化为带信息的 Error
+      throw new Error(e?.errMsg || e?.message || JSON.stringify(e));
+    }
   }, []);
 
   const sendChatMessage = useCallback(
     async (message: {
       msgtype: 'text' | 'miniprogram';
       text?: { content: string };
-      miniprogram?: { appid: string; title: string; pagepath: string; thumb_media_id: string };
+      miniprogram?: { appid: string; title: string; img_url: string; page: string };
     }) => {
-      const r = await sdkSendChatMessage(message as any);
-      if (r.errMsg?.includes('ok')) return { errMsg: r.errMsg };
-      throw new Error(r.errMsg || 'sendChatMessage 失败');
+      try {
+        const r = await sdkSendChatMessage(message as any);
+        if (r.errMsg?.includes('ok')) return { errMsg: r.errMsg };
+        throw new Error(r.errMsg || `errCode=${(r as any).errCode ?? '?'}`);
+      } catch (e: any) {
+        throw new Error(e?.errMsg || e?.message || JSON.stringify(e));
+      }
     },
     [],
   );
