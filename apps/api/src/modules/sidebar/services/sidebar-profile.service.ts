@@ -24,11 +24,31 @@ export class SidebarProfileService {
     externalUserId: string,
     member: { userId: string; corpId: string },
   ): Promise<any> {
-    const contact =
+    let contact =
       (await this.prisma.contact.findUnique({ where: { externalUserId } })) ??
       (await this.prisma.contact.findFirst({ where: { openId: externalUserId } }));
 
-    if (!contact) throw new NotFoundException('未找到该客户画像');
+    if (!contact) {
+      // 自动建档：新客户（未走过 KF/归因）打开侧边栏时创建空画像，
+      // 后续随粘贴对话资产化、交易、归因回调逐步完善
+      contact = await this.prisma.contact
+        .create({
+          data: {
+            openId: externalUserId,
+            externalUserId,
+            metadata: { autoProfile: true, createdAt: new Date().toISOString() },
+          },
+        })
+        .catch(async () => {
+          // 并发/唯一冲突兜底：再查一次
+          return (
+            (await this.prisma.contact.findUnique({ where: { externalUserId } })) ??
+            (await this.prisma.contact.findFirst({ where: { openId: externalUserId } }))
+          );
+        });
+    }
+
+    if (!contact) throw new NotFoundException('客户画像创建失败');
 
     // 企微客户详情软校验（quarantine：API 不可用/未配置不阻断，失败仅告警）
     const external = await this.fetchExternalDetail(externalUserId, member.corpId);
