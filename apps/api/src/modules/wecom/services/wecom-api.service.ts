@@ -250,13 +250,11 @@ export class WecomApiService {
   }
 
   /**
-   * 获取 jsapi_ticket（侧边栏 JS-SDK 签名用）
+   * 获取 jsapi_ticket（侧边栏 JS-SDK 签名用，Redis 缓存 ~2h）
    * GET /cgi-bin/get_jsapi_ticket?access_token=TOKEN
    */
   async getJsapiTicket(accessToken: string): Promise<string> {
-    const url = `${WECOM_API_BASE}/get_jsapi_ticket?access_token=${accessToken}`;
-    const data = await this.get(url);
-    return data.ticket;
+    return this.getTicketCached(accessToken, 'jsapi');
   }
 
   /**
@@ -264,8 +262,37 @@ export class WecomApiService {
    * GET /cgi-bin/ticket/get?access_token=TOKEN&type=agent_config
    */
   async getAgentConfigTicket(accessToken: string): Promise<string> {
-    const url = `${WECOM_API_BASE}/ticket/get?access_token=${accessToken}&type=agent_config`;
+    return this.getTicketCached(accessToken, 'agent_config');
+  }
+
+  /**
+   * ticket 通用获取（Redis 缓存 7000s；企微 ticket 有效期 7200s）
+   * key 含 token 指纹：不同应用（secret）的 ticket 不同，防止多应用串用
+   */
+  private async getTicketCached(
+    accessToken: string,
+    type: 'jsapi' | 'agent_config',
+  ): Promise<string> {
+    const tokenFp = crypto.createHash('md5').update(accessToken).digest('hex').slice(0, 8);
+    const cacheKey = `wecom:ticket:${type}:${tokenFp}`;
+    try {
+      const cached = await this.redisService.get<string>(cacheKey);
+      if (cached) return cached;
+    } catch {
+      this.logger.warn('Redis ticket 缓存读取失败，直接请求 API');
+    }
+
+    const url =
+      type === 'jsapi'
+        ? `${WECOM_API_BASE}/get_jsapi_ticket?access_token=${accessToken}`
+        : `${WECOM_API_BASE}/ticket/get?access_token=${accessToken}&type=agent_config`;
     const data = await this.get(url);
+
+    try {
+      await this.redisService.set(cacheKey, data.ticket, 7000 * 1000);
+    } catch {
+      this.logger.warn('Redis ticket 缓存写入失败');
+    }
     return data.ticket;
   }
 
