@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react';
-import { INTENT_LABELS, reportSend, STRATEGY_LABELS, STRATEGY_ORDER } from '../api/copilot';
+import {
+  generateUserTags,
+  INTENT_LABELS,
+  reportSend,
+  STRATEGY_LABELS,
+  STRATEGY_ORDER,
+} from '../api/copilot';
 import { fetchProductCard, fetchProducts, ProductBrief } from '../api/products';
 import { useCopilotStream } from '../hooks/useCopilotStream';
 import type { WxAgent } from '../hooks/useWxAgent';
@@ -24,6 +30,27 @@ export default function CopilotPanel({ token, wx, externalUserId }: Props) {
   const [busy, setBusy] = useState<string | null>(null);
   const [pasted, setPasted] = useState('');
   const [products, setProducts] = useState<ProductBrief[]>([]);
+  const [userTags, setUserTags] = useState<string[]>([]);
+  const [tagBusy, setTagBusy] = useState(false);
+
+  /** 根据粘贴对话生成用户语义标签并写入画像 */
+  const doGenerateTags = async () => {
+    setTagBusy(true);
+    setStatus(null);
+    try {
+      const r = await generateUserTags(token, externalUserId, pasted.trim() || undefined);
+      setUserTags(r.tags || []);
+      setStatus(
+        r.tags?.length
+          ? `已生成 ${r.tags.length} 个用户标签并写入客户画像`
+          : '未能萃取标签（对话信息不足）',
+      );
+    } catch (e: any) {
+      setStatus(`标签生成失败：${e.message}`);
+    } finally {
+      setTagBusy(false);
+    }
+  };
 
   // 在售商品列表（产品卡片选择用）
   useEffect(() => {
@@ -124,6 +151,22 @@ export default function CopilotPanel({ token, wx, externalUserId }: Props) {
         value={pasted}
         onChange={(e) => setPasted(e.target.value)}
       />
+
+      <div className="actions-row" style={{ marginBottom: 10 }}>
+        <button disabled={tagBusy || running} onClick={() => doGenerateTags()}>
+          {tagBusy ? '分析中…' : '🧩 从对话生成用户标签'}
+        </button>
+      </div>
+
+      {userTags.length > 0 && (
+        <div className="tags" style={{ padding: 0, marginBottom: 10 }}>
+          {userTags.map((t) => (
+            <span key={t} className="tag tag-behavior">
+              {t}
+            </span>
+          ))}
+        </div>
+      )}
 
       {intent && (
         <div className="intent-bar">

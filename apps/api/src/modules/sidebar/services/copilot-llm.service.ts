@@ -202,6 +202,61 @@ export class CopilotLlmService {
     return parts.join('\n');
   }
 
+  /**
+   * 从对话萃取用户语义标签（非流式 JSON）
+   * 标签描述用户身份特征/偏好/场景/关注点，写入 Contact.tags 供画像与后期分析
+   */
+  async generateUserTags(ctx: CopilotContext): Promise<string[]> {
+    const { apiUrl, apiKey, model } = this.getLlmConfig();
+    if (!apiUrl || !apiKey) return [];
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12_000);
+    try {
+      const res = await fetch(`${apiUrl}/chat/completions`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: this.buildTagPrompt() },
+            { role: 'user', content: this.describeContext(ctx) },
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.5,
+          max_tokens: 300,
+        }),
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error(`LLM ${res.status}`);
+      const data = await res.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) throw new Error('空响应');
+      const parsed = JSON.parse(content);
+      const tags = Array.isArray(parsed.tags) ? parsed.tags : [];
+      return tags
+        .filter((t: any) => typeof t === 'string' && t.trim())
+        .map((t: string) => t.trim().slice(0, 12))
+        .slice(0, 6);
+    } catch (err: any) {
+      this.logger.warn(`用户标签生成失败: ${err.message}`);
+      return [];
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  private buildTagPrompt(): string {
+    return `你是用户画像分析助手。根据销售提供的客户画像与对话，萃取 3-6 个描述该用户的语义化标签。
+
+## 要求
+- 标签描述用户的身份特征、生活方式、偏好、购买场景、关注点等
+- 每个标签 2-6 个字的短语（如：咖啡爱好者、注重品质、送礼场景、新手妈妈、性价比敏感）
+- 依据充分才生成，不要臆测
+- 只返回 JSON：{"tags":["标签1","标签2"]}
+- 无法判断时返回 {"tags":[]}`;
+  }
+
   private buildIntentPrompt(): string {
     return `你是销售对话分析助手。根据给定的客户画像与会话，判断客户当前的意图分类与心理状态。
 

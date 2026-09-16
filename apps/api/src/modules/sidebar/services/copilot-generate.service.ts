@@ -184,6 +184,40 @@ export class CopilotGenerateService {
     }
   }
 
+  /**
+   * 根据对话生成用户语义标签并写入 Contact.tags（去重）
+   * 独立于话术生成的按钮入口：粘贴对话 → 萃取标签 → 客户画像完善
+   */
+  async generateTags(
+    externalUserId: string,
+    member: { userId: string; corpId: string },
+    pastedConversation?: string,
+  ): Promise<{ tags: string[] }> {
+    const { ctx, contactId } = await this.prepare(externalUserId, member, pastedConversation);
+
+    const tags = await this.llm.generateUserTags(ctx);
+    if (contactId && tags.length) {
+      const contact = await this.prisma.contact.findUnique({
+        where: { id: contactId },
+        select: { tags: true },
+      });
+      const existing = Array.isArray(contact?.tags) ? (contact!.tags as any[]) : [];
+      const now = new Date().toISOString();
+      const merged = [...existing];
+      for (const name of tags) {
+        if (!merged.some((x) => x.source === 'BEHAVIOR' && x.name === name)) {
+          merged.push({ name, source: 'BEHAVIOR', at: now } as any);
+        }
+      }
+      await this.prisma.contact.update({
+        where: { id: contactId },
+        data: { tags: merged as any },
+      });
+      this.logger.log(`[user-tags] ${externalUserId} 写入标签: ${tags.join('、')}`);
+    }
+    return { tags };
+  }
+
   private buildOrdersSummary(stats: any): string {
     if (!stats || stats.paidOrders === 0) return '暂无成交记录';
     const yuan = (stats.totalPaidAmountFen / 100).toFixed(0);

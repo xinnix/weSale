@@ -82,6 +82,20 @@ export class SidebarClientController {
     res.end();
   }
 
+  /** 根据对话生成用户语义标签（写入 Contact.tags） */
+  @Post('tags/generate')
+  generateTags(
+    @Body() body: { externalUserId?: string; pastedConversation?: string },
+    @CurrentMember() member: { userId: string; corpId: string },
+  ) {
+    if (!body?.externalUserId) throw new BadRequestException('缺少 externalUserId');
+    return this.copilotGenerateService.generateTags(
+      body.externalUserId,
+      member,
+      body.pastedConversation,
+    );
+  }
+
   /** 发送事件上报（采纳率 + 合规审计） */
   @Post('send/record')
   sendRecord(

@@ -87,3 +87,15 @@ export interface SendRecordInput {
 export function reportSend(token: string, payload: SendRecordInput) {
   return apiPost<{ id: string; sentAt: string }>('/sidebar/send/record', token, payload);
 }
+
+/** 根据对话生成用户语义标签（写入 Contact.tags） */
+export function generateUserTags(
+  token: string,
+  externalUserId: string,
+  pastedConversation?: string,
+) {
+  return apiPost<{ tags: string[] }>('/sidebar/tags/generate', token, {
+    externalUserId,
+    pastedConversation: pastedConversation?.trim() || undefined,
+  });
+}
