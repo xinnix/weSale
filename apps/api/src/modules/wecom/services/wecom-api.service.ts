@@ -259,6 +259,16 @@ export class WecomApiService {
     return data.ticket;
   }
 
+  /**
+   * 获取 agent_config 的 ticket（wx.agentConfig 签名专用，与企业 jsapi_ticket 是两种 ticket，不可混用）
+   * GET /cgi-bin/ticket/get?access_token=TOKEN&type=agent_config
+   */
+  async getAgentConfigTicket(accessToken: string): Promise<string> {
+    const url = `${WECOM_API_BASE}/ticket/get?access_token=${accessToken}&type=agent_config`;
+    const data = await this.get(url);
+    return data.ticket;
+  }
+
   private async get(url: string): Promise<any> {
     const response = await fetch(url);
     const data = await response.json();

@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { JsapiConfig } from '../api/profile';
-
-// 企微 JS-SDK 全局对象：jweixin-1.2.0.js 挂载 window.wx（企业微信沿用微信 SDK）
-// 个别环境别名为 ww，做兼容回退；懒取，避免模块加载时尚未就绪
-function getSdk(): any {
-  const w = window as any;
-  return w.wx || w.ww;
-}
+import {
+  register,
+  getCurExternalContact as sdkGetCurExternalContact,
+  sendChatMessage as sdkSendChatMessage,
+} from '@wecom/jssdk';
+import { fetchJsapiConfig } from '../api/profile';
 
 export interface WxAgent {
   ready: boolean;
   error: string | null;
-  /** JS-SDK 初始化阶段（诊断用）：idle/no-sdk/config-called/config-ready/agentconfig-ok/agentconfig-fail/config-error */
+  /** JS-SDK 初始化阶段（诊断用）：idle/fetch-config/registering/config-ok/agentconfig-ok/... */
   stage: string;
   /** 当前会话客户 external_userid（仅聊天工具栏内可用） */
   getCurExternalContact: () => Promise<{ userId?: string }>;
@@ -23,78 +21,81 @@ export interface WxAgent {
   }) => Promise<{ errMsg: string }>;
 }
 
-export function useWxAgent(config: JsapiConfig | null): WxAgent {
+/**
+ * 企微新版官方 JS-SDK（@wecom/jssdk，ww.register）：
+ * 不再手动 wx.config/wx.agentConfig——register 内部按需拉取双签名（企业 + 应用），
+ * SDK 自动完成两级鉴权；getCurExternalContact 等 Promise 化接口注册后直接可用。
+ */
+export function useWxAgent(token: string): WxAgent {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stage, setStage] = useState('idle');
 
   useEffect(() => {
-    if (!config) return;
-    const sdk = getSdk();
-    if (!sdk) {
-      const w = window as any;
-      setStage('no-sdk');
-      setError(
-        `企微 JS-SDK 未加载（typeof wx=${typeof w.wx}, ww=${typeof w.ww}；需在企业微信客户端内打开）`,
-      );
-      return;
-    }
+    if (!token) return;
+    let cancelled = false;
 
-    setStage('config-called');
-    sdk.config({
-      beta: true, // 侧边栏接口需要 beta 模式
-      appId: config.appId, // 企业 corpId（企微 wx.config 的字段名是 appId，非 corpid）
-      timestamp: config.timestamp,
-      nonceStr: config.nonceStr,
-      signature: config.signature,
-      jsApiList: ['getCurExternalContact', 'sendChatMessage'],
-    });
-    sdk.error((err: any) => {
-      console.error('wx.config error', err);
-      setStage('config-error');
-      setError('wx.config 失败：' + (err?.errMsg || JSON.stringify(err)));
-    });
-    sdk.ready(() => {
-      setStage('config-ready');
-      // 先用 wx.config（企业身份）放行，避免 agentConfig 单独失败阻断整条链路
-      setReady(true);
-      setError(null);
-      // 应用级接口（getCurExternalContact / sendChatMessage）需 agentConfig（best-effort，
-      // 失败不阻断；若 invoke 依赖它，会在调用时返回更精确的错误）
-      sdk.agentConfig({
-        corpid: config.appId,
-        agentid: config.agentid,
-        timestamp: config.timestamp,
-        nonceStr: config.nonceStr,
-        signature: config.signature,
-        jsApiList: ['getCurExternalContact', 'sendChatMessage'],
-        success: () => setStage('agentconfig-ok'),
-        fail: (res: any) => {
-          console.warn('wx.agentConfig fail（不阻断）', res);
-          setStage('agentconfig-fail');
-        },
-      });
-    });
-  }, [config]);
+    (async () => {
+      try {
+        setStage('fetch-config');
+        const url = window.location.href.split('#')[0];
+        const cfg = await fetchJsapiConfig(token, url);
+        if (cancelled) return;
 
-  // 超时保护：JS-SDK 静默时给出可见错误而非无限 loading
+        setStage('registering');
+        register({
+          corpId: cfg.appId,
+          agentId: cfg.agentid,
+          jsApiList: ['getCurExternalContact', 'sendChatMessage'],
+          // 企业身份签名（wx.config 层）
+          async getConfigSignature(signUrl: string) {
+            const c = await fetchJsapiConfig(token, signUrl);
+            return { timestamp: c.timestamp, nonceStr: c.nonceStr, signature: c.signature };
+          },
+          // 应用身份签名（wx.agentConfig 层）
+          async getAgentConfigSignature(signUrl: string) {
+            const c = await fetchJsapiConfig(token, signUrl);
+            return { timestamp: c.timestamp, nonceStr: c.nonceStr, signature: c.agentSignature };
+          },
+          onConfigSuccess: () => setStage('config-ok'),
+          onConfigFail: (res) => {
+            setStage(`config-fail: ${JSON.stringify(res)}`);
+            setError('企微 config 失败：' + JSON.stringify(res));
+          },
+          onAgentConfigSuccess: () => {
+            setStage('agentconfig-ok');
+            setReady(true);
+            setError(null);
+          },
+          onAgentConfigFail: (res) => {
+            setStage(`agentconfig-fail: ${JSON.stringify(res)}`);
+            setError('企微 agentConfig 失败：' + JSON.stringify(res));
+          },
+        });
+      } catch (e: any) {
+        setStage('register-fail');
+        setError('企微 SDK 注册失败：' + e.message);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  // 超时保护：鉴权回调静默时给出可见错误而非无限 loading
   useEffect(() => {
-    if (!config || ready) return;
+    if (!token || ready) return;
     const timer = setTimeout(() => {
-      setError((prev) => prev ?? 'JS-SDK 初始化超时（企微未回调 ready/agentConfig）');
-    }, 8000);
+      setError((prev) => prev ?? `JS-SDK 初始化超时（stage=${stage}）`);
+    }, 12000);
     return () => clearTimeout(timer);
-  }, [config, ready]);
+  }, [token, ready, stage]);
 
   const getCurExternalContact = useCallback(async () => {
-    const sdk = getSdk();
-    if (!sdk) throw new Error('企微 JS-SDK 未加载');
-    return new Promise<{ userId?: string }>((resolve, reject) => {
-      sdk.invoke('getCurExternalContact', {}, (res: any) => {
-        if (res?.userId) resolve({ userId: res.userId });
-        else reject(new Error(res?.errMsg || 'getCurExternalContact 失败'));
-      });
-    });
+    const r = await sdkGetCurExternalContact();
+    if (r.userId) return { userId: r.userId };
+    throw new Error(r.errMsg || `errCode=${(r as any).errCode ?? '?'}`);
   }, []);
 
   const sendChatMessage = useCallback(
@@ -103,14 +104,9 @@ export function useWxAgent(config: JsapiConfig | null): WxAgent {
       text?: { content: string };
       miniprogram?: { appid: string; title: string; pagepath: string; thumb_media_id: string };
     }) => {
-      const sdk = getSdk();
-      if (!sdk) throw new Error('企微 JS-SDK 未加载');
-      return new Promise<{ errMsg: string }>((resolve, reject) => {
-        sdk.invoke('sendChatMessage', message, (res: any) => {
-          if (res?.errMsg?.includes('ok')) resolve({ errMsg: res.errMsg });
-          else reject(new Error(res?.errMsg || 'sendChatMessage 失败'));
-        });
-      });
+      const r = await sdkSendChatMessage(message as any);
+      if (r.errMsg?.includes('ok')) return { errMsg: r.errMsg };
+      throw new Error(r.errMsg || 'sendChatMessage 失败');
     },
     [],
   );

@@ -56,6 +56,9 @@ export class SidebarAuthService {
 
     const accessToken = await this.wecomApi.getAccessToken(corpId, secret);
     const member = await this.wecomApi.getMemberByCode(accessToken, code);
+    this.logger.log(
+      `[oauth-callback] getuserinfo → userid="${member.userId ?? '-'}" openid="${member.openId ?? '-'}" (corpId=${corpId})`,
+    );
     if (!member.userId) {
       throw new UnauthorizedException('OAuth 未返回成员身份（可能非本企业成员）');
     }
@@ -122,6 +125,7 @@ export class SidebarAuthService {
     timestamp: number;
     nonceStr: string;
     signature: string;
+    agentSignature: string;
   }> {
     const corpId = this.getCorpId();
     const secret = this.config.get<string>('WX_WORK_SECRET', '');
@@ -129,19 +133,33 @@ export class SidebarAuthService {
       throw new UnauthorizedException('未配置 WX_WORK_SECRET（自建应用）');
     }
     const accessToken = await this.wecomApi.getAccessToken(corpId, secret);
-    const ticket = await this.wecomApi.getJsapiTicket(accessToken);
+    // 两种 ticket 不可混用：wx.config 用企业 jsapi_ticket；wx.agentConfig 用 agent_config ticket
+    const jsapiTicket = await this.wecomApi.getJsapiTicket(accessToken);
+    const agentTicket = await this.wecomApi.getAgentConfigTicket(accessToken);
+    const agentid = Number(this.config.get<string>('WX_WORK_AGENT_ID', '0'));
 
     const nonceStr = crypto.randomBytes(16).toString('hex');
     const timestamp = Math.floor(Date.now() / 1000);
-    const signStr = `jsapi_ticket=${ticket}&noncestr=${nonceStr}&timestamp=${timestamp}&url=${url}`;
-    const signature = crypto.createHash('sha1').update(signStr).digest('hex');
+    const sign = (ticket: string) =>
+      crypto
+        .createHash('sha1')
+        .update(`jsapi_ticket=${ticket}&noncestr=${nonceStr}&timestamp=${timestamp}&url=${url}`)
+        .digest('hex');
+    const signature = sign(jsapiTicket); // wx.config 用
+    const agentSignature = sign(agentTicket); // wx.agentConfig 用
+
+    // 地面真相：打出参与签名的值，排查 corpid/agentid/url 是否被污染
+    this.logger.log(
+      `[jsapi-sign] corpid="${corpId}" agentid=${agentid} url="${url}" jsapiTicket=${jsapiTicket.slice(0, 6)}… agentTicket=${agentTicket.slice(0, 6)}…`,
+    );
 
     return {
       appId: corpId,
-      agentid: Number(this.config.get<string>('WX_WORK_AGENT_ID', '0')),
+      agentid,
       timestamp,
       nonceStr,
       signature,
+      agentSignature,
     };
   }
 }

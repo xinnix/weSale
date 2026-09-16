@@ -47,7 +47,8 @@ export interface JsapiConfig {
   agentid: number;
   timestamp: number;
   nonceStr: string;
-  signature: string;
+  signature: string; // wx.config 用（企业 jsapi_ticket 签名）
+  agentSignature: string; // wx.agentConfig 用（agent_config ticket 签名）
 }
 
 export function fetchProfile(token: string, externalUserId: string): Promise<ProfileResponse> {

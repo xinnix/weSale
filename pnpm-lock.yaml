@@ -553,6 +553,9 @@ importers:
       '@opencode/shared':
         specifier: workspace:*
         version: link:../../infra/shared
+      '@wecom/jssdk':
+        specifier: ^2.4.4
+        version: 2.4.4
       react:
         specifier: ^19.2.0
         version: 19.2.3
@@ -4427,6 +4430,9 @@ packages:
 
   '@webassemblyjs/wast-printer@1.14.1':
     resolution: {integrity: sha512-kPSSXE6De1XOR820C90RIo2ogvZG+c3KiHzqUoO/F34Y2shGzesfqv7o57xrxovZJH/MetF5UjroJ/R/3isoiw==}
+
+  '@wecom/jssdk@2.4.4':
+    resolution: {integrity: sha512-CoMxyTvlpR2sz+KC+0kfnbdJj19EjJg7HAU/52LUW6dPUDEvW3NV40LNhWUnvqFg49y3zJswyGVFeraDcKc0Kw==}
 
   '@xtuc/ieee754@1.2.0':
     resolution: {integrity: sha512-DX8nKgqcGwsc0eJSqYt5lwP4DH5FlHnmuWWBRy7X0NcaGR0ZtuyeESgMwTYVEtxmsNGY+qit4QYT/MIYTOTPeA==}
@@ -16612,6 +16618,8 @@ snapshots:
     dependencies:
       '@webassemblyjs/ast': 1.14.1
       '@xtuc/long': 4.2.2
+
+  '@wecom/jssdk@2.4.4': {}
 
   '@xtuc/ieee754@1.2.0': {}
 

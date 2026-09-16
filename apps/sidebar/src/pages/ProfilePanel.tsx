@@ -3,7 +3,7 @@ import OrderHistory from '../components/OrderHistory';
 import CopilotPanel from '../components/CopilotPanel';
 import RecentSession from '../components/RecentSession';
 import TagChips from '../components/TagChips';
-import { fetchJsapiConfig, fetchProfile, JsapiConfig, ProfileResponse } from '../api/profile';
+import { fetchProfile, ProfileResponse } from '../api/profile';
 import { useWxAgent } from '../hooks/useWxAgent';
 
 const INTENT_LABEL: Record<string, string> = {
@@ -21,21 +21,12 @@ interface Props {
 
 /** 客户画像主面板：JS-SDK 签名 → 定位当前客户 → 拉画像 → 渲染 */
 export default function ProfilePanel({ token, onLogout }: Props) {
-  const url = window.location.href.split('#')[0];
-  const [jsapi, setJsapi] = useState<JsapiConfig | null>(null);
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [externalUserId, setExternalUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const wx = useWxAgent(jsapi);
-
-  // 1. 先拿 JS-SDK 签名（ww.config 前置）
-  useEffect(() => {
-    fetchJsapiConfig(token, url)
-      .then(setJsapi)
-      .catch((e) => setError(e.message));
-  }, [token, url]);
+  const wx = useWxAgent(token);
 
   // 2. 聊天工具栏内定位当前客户
   useEffect(() => {
@@ -62,6 +53,7 @@ export default function ProfilePanel({ token, onLogout }: Props) {
     return (
       <div className="center feedback">
         <p className="error-text">{error}</p>
+        <p className="diag">JS-SDK 阶段：{wx.stage}</p>
         <button onClick={() => window.location.reload()}>重试</button>
         <button onClick={onLogout}>重新登录</button>
       </div>

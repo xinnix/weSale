@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@opencode/shared": "workspace:*",
+    "@wecom/jssdk": "^2.4.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
