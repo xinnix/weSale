@@ -8,6 +8,7 @@ import { CopilotGenerateService } from './services/copilot-generate.service';
 import { CopilotLlmService } from './services/copilot-llm.service';
 import { SendEventService } from './services/send-event.service';
 import { SidebarAuthService } from './services/sidebar-auth.service';
+import { SidebarProductsService } from './services/sidebar-products.service';
 import { SidebarProfileService } from './services/sidebar-profile.service';
 import { SidebarTagsService } from './services/sidebar-tags.service';
 
@@ -28,6 +29,7 @@ import { SidebarTagsService } from './services/sidebar-tags.service';
     CopilotLlmService,
     CopilotGenerateService,
     SendEventService,
+    SidebarProductsService,
     RedisService,
   ],
 })

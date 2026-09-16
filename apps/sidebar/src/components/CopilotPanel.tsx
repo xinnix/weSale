@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { INTENT_LABELS, reportSend, STRATEGY_LABELS, STRATEGY_ORDER } from '../api/copilot';
+import { fetchProductCard, fetchProducts, ProductBrief } from '../api/products';
 import { useCopilotStream } from '../hooks/useCopilotStream';
 import type { WxAgent } from '../hooks/useWxAgent';
 
@@ -22,9 +23,47 @@ export default function CopilotPanel({ token, wx, externalUserId }: Props) {
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [pasted, setPasted] = useState('');
+  const [products, setProducts] = useState<ProductBrief[]>([]);
+
+  // 在售商品列表（产品卡片选择用）
+  useEffect(() => {
+    fetchProducts(token)
+      .then(setProducts)
+      .catch(() => setProducts([]));
+  }, [token]);
 
   const hasContent = STRATEGY_ORDER.some((s) => strategies[s]);
   const psychology = intent?.psychology;
+
+  /** 发送产品小程序卡片（thumb_media_id 由后端组装） */
+  const sendCard = async (p: ProductBrief) => {
+    setBusy(`card-${p.id}`);
+    setStatus(null);
+    try {
+      const card = await fetchProductCard(token, p.id);
+      await wx.sendChatMessage({
+        msgtype: 'miniprogram',
+        miniprogram: {
+          appid: card.appid,
+          title: card.title,
+          pagepath: card.pagePath,
+          thumb_media_id: card.thumbMediaId,
+        },
+      });
+      setStatus(`已调起发送（${p.name} 卡片），请在企微客户端内确认`);
+      void reportSend(token, {
+        externalUserId,
+        generationId: generationId ?? undefined,
+        msgType: 'miniprogram',
+        adopted: true,
+        contentSnapshot: p.name,
+      }).catch(() => {});
+    } catch (e: any) {
+      setStatus(`卡片发送失败：${e.message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const send = async (strategy: string, content: string) => {
     if (!content) return;
@@ -128,6 +167,26 @@ export default function CopilotPanel({ token, wx, externalUserId }: Props) {
           </div>
         </div>
       ))}
+
+      {products.length > 0 && (
+        <div className="products">
+          <div className="products-title">产品卡片</div>
+          {products.map((p) => (
+            <div key={p.id} className="product-row">
+              <span className="product-name">
+                {p.name} · ¥{(p.priceFen / 100).toFixed(0)}
+              </span>
+              <button
+                className="mini"
+                disabled={busy === `card-${p.id}`}
+                onClick={() => sendCard(p)}
+              >
+                {busy === `card-${p.id}` ? '…' : '发卡片'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {status && <div className="status">{status}</div>}
       <div className="hint">发送经企业微信客户端逐条人工确认（P1 红线，系统无自动发送）</div>

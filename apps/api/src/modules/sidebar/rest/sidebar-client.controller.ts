@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  Param,
   Post,
   Query,
   Req,
@@ -15,10 +16,11 @@ import { MemberJwtGuard } from '../guards/member-jwt.guard';
 import { CopilotGenerateService } from '../services/copilot-generate.service';
 import { SendEventInput, SendEventService } from '../services/send-event.service';
 import { SidebarAuthService } from '../services/sidebar-auth.service';
+import { SidebarProductsService } from '../services/sidebar-products.service';
 import { SidebarProfileService } from '../services/sidebar-profile.service';
 
 /**
- * 侧边栏客户数据（Member 数据面：画像 + AI 生成 + 发送上报 + JS-SDK 签名）
+ * 侧边栏客户数据（Member 数据面：画像 + AI 生成 + 发送上报 + 产品卡片 + JS-SDK 签名）
  * 全部走 MemberJwtGuard，与 Admin/User 身份面彻底隔离
  */
 @Controller('sidebar')
@@ -29,6 +31,7 @@ export class SidebarClientController {
     private readonly authService: SidebarAuthService,
     private readonly copilotGenerateService: CopilotGenerateService,
     private readonly sendEventService: SendEventService,
+    private readonly productsService: SidebarProductsService,
   ) {}
 
   /** 客户画像聚合（标签/积分/订单历史/最近 KF 会话摘要） */
@@ -89,6 +92,21 @@ export class SidebarClientController {
       throw new BadRequestException('缺少 externalUserId / msgType');
     }
     return this.sendEventService.record(body, member);
+  }
+
+  /** 在售商品列表（侧边栏选产品卡片用） */
+  @Get('products')
+  products() {
+    return this.productsService.listProducts();
+  }
+
+  /** 组装某商品的小程序卡片发送参数（thumb_media_id 等） */
+  @Get('products/:id/card')
+  productCard(
+    @Param('id') id: string,
+    @CurrentMember() member: { userId: string; corpId: string },
+  ) {
+    return this.productsService.getProductCard(id, member.corpId);
   }
 
   /** JS-SDK 签名（侧边栏 ww.config 前置） */
