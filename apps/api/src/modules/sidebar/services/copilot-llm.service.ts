@@ -87,7 +87,7 @@ export class CopilotLlmService {
           ],
           response_format: { type: 'json_object' },
           temperature: 0.3,
-          max_tokens: 200,
+          max_tokens: 1000, // 推理型模型思考也耗 token，过小会导致 content 为空
         }),
         signal: controller.signal,
       });
@@ -224,7 +224,7 @@ export class CopilotLlmService {
           ],
           response_format: { type: 'json_object' },
           temperature: 0.5,
-          max_tokens: 300,
+          max_tokens: 1000, // 推理型模型思考也耗 token
         }),
         signal: controller.signal,
       });
