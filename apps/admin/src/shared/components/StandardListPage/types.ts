@@ -92,9 +92,12 @@ export interface StandardListPageProps<T = Record<string, unknown>> {
   meta?: Record<string, unknown>; // useTable 的 meta 参数
 
   // 自定义渲染
-  renderRowActions?: (record: T) => ReactNode; // 自定义行操作
+  renderRowActions?: (record: T) => ReactNode; // 自定义行操作（设置后将替换内置编辑/删除，除非同时开启 showDefaultRowActions）
   renderHeader?: () => ReactNode; // 自定义 Header 区域
   renderModalContent?: () => ReactNode; // 自定义 Modal 内容
+
+  /** 在 renderRowActions 之外保留内置的「编辑/删除」按钮（默认关闭，保持旧行为） */
+  showDefaultRowActions?: boolean;
 }
 
 /**

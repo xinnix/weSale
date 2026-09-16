@@ -63,6 +63,7 @@ export function StandardListPage<T extends Record<string, unknown> = Record<stri
     renderRowActions,
     renderHeader,
     renderModalContent,
+    showDefaultRowActions = false,
   } = props;
 
   const { message } = App.useApp();
@@ -340,24 +341,32 @@ export function StandardListPage<T extends Record<string, unknown> = Record<stri
             }}
             columns={[
               ...columns,
-              ...(renderRowActions
+              ...(renderRowActions || (formComponent && showDefaultRowActions)
                 ? [
                     {
                       title: '操作',
                       key: 'actions',
                       fixed: 'right' as const,
-                      width: 150,
-                      render: (record: T) => renderRowActions(record),
-                    },
-                  ]
-                : formComponent
-                  ? [
-                      {
-                        title: '操作',
-                        key: 'actions',
-                        fixed: 'right' as const,
-                        width: 150,
-                        render: (_: unknown, record: T) => (
+                      width: renderRowActions && showDefaultRowActions ? 220 : 150,
+                      render: (record: T) =>
+                        renderRowActions && showDefaultRowActions ? (
+                          <Space size={4}>
+                            {renderRowActions(record)}
+                            <Button type="link" size="small" onClick={() => handleEdit(record)}>
+                              编辑
+                            </Button>
+                            <Popconfirm
+                              title="确认删除？"
+                              onConfirm={() => handleDelete(String(record.id))}
+                            >
+                              <Button type="link" size="small" danger>
+                                删除
+                              </Button>
+                            </Popconfirm>
+                          </Space>
+                        ) : renderRowActions ? (
+                          renderRowActions(record)
+                        ) : (
                           <Space>
                             <Button type="link" size="small" onClick={() => handleEdit(record)}>
                               编辑
@@ -372,9 +381,9 @@ export function StandardListPage<T extends Record<string, unknown> = Record<stri
                             </Popconfirm>
                           </Space>
                         ),
-                      },
-                    ]
-                  : []),
+                    },
+                  ]
+                : []),
             ]}
             rowKey="id"
             dataSource={data}

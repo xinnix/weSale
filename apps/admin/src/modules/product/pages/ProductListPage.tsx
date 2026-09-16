@@ -79,6 +79,7 @@ export function ProductListPage() {
       columns={columns}
       formComponent={ProductForm}
       formWidth={720}
+      showDefaultRowActions
       searchFields={[{ field: 'search', placeholder: '搜索产品名称/标识' }]}
       filterFields={[
         {
