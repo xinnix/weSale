@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Query, Req, Res, Logger } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { Public } from '../../auth/decorators/decorators';
+import { ExternalContactService } from '../../wecom/services/external-contact.service';
 import { WechatKfCryptoService } from '../services/kf-crypto.service';
 import { WechatKfService } from '../services/kf.service';
 
@@ -11,6 +12,7 @@ export class KfController {
   constructor(
     private readonly kfCryptoService: WechatKfCryptoService,
     private readonly kfService: WechatKfService,
+    private readonly externalContactService: ExternalContactService,
   ) {}
 
   /**
@@ -111,6 +113,15 @@ export class KfController {
         this.logger.log(`收到非 KF 消息事件: event=${parsed.Event}`);
         res.set('Content-Type', 'text/plain');
         res.send('success');
+
+        // 客户联系事件兜底：企微后台「客户联系」回调若指向本 endpoint，
+        // change_external_contact 也从这里分发归因（与 /api/wecom/callback 同一处理）
+        if (parsed.Event === 'change_external_contact') {
+          const event = { ...parsed };
+          this.externalContactService
+            .handleChangeEvent({ corpId: parsed.ToUserName || '' }, event)
+            .catch((err) => this.logger.warn(`客户联系事件归因失败: ${err.message}`));
+        }
       }
     } catch (error: any) {
       this.logger.error('消息回调处理异常', error);

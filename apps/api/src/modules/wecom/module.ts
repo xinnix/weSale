@@ -19,6 +19,6 @@ import { RedisService } from '../../shared/services/redis.service';
     ExternalContactService,
     RedisService,
   ],
-  exports: [WecomApiService, WecomCryptoService, WecomConfigService],
+  exports: [WecomApiService, WecomCryptoService, WecomConfigService, ExternalContactService],
 })
 export class WecomModule {}
