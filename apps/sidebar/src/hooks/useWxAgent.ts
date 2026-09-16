@@ -17,7 +17,7 @@ export interface WxAgent {
   sendChatMessage: (message: {
     msgtype: 'text' | 'miniprogram';
     text?: { content: string };
-    miniprogram?: { appid: string; title: string; img_url: string; page: string };
+    miniprogram?: { appid: string; title: string; imgUrl: string; page: string };
   }) => Promise<{ errMsg: string }>;
 }
 
@@ -107,7 +107,7 @@ export function useWxAgent(token: string): WxAgent {
     async (message: {
       msgtype: 'text' | 'miniprogram';
       text?: { content: string };
-      miniprogram?: { appid: string; title: string; img_url: string; page: string };
+      miniprogram?: { appid: string; title: string; imgUrl: string; page: string };
     }) => {
       try {
         const r = await sdkSendChatMessage(message as any);

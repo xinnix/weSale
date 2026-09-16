@@ -73,7 +73,7 @@ export default function CopilotPanel({ token, wx, externalUserId }: Props) {
         miniprogram: {
           appid: card.appid,
           title: card.title,
-          img_url: card.imgUrl,
+          imgUrl: card.imgUrl,
           page: card.page,
         },
       });

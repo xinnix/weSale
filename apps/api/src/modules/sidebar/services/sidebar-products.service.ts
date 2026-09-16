@@ -37,7 +37,7 @@ export class SidebarProductsService {
       appid,
       title: product.name,
       imgUrl: product.coverImage,
-      page: `pages/product/detail?slug=${product.slug}`,
+      page: `pages/product/detail.html?slug=${product.slug}`, // 企微要求 .html 后缀
     };
   }
 }
