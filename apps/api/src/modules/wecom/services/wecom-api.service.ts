@@ -211,12 +211,14 @@ export class WecomApiService {
   }
 
   /**
-   * 获取「联系我」二维码（按 config_id 查询，返回 contact_way[0].qr_code）
-   * GET /cgi-bin/externalcontact/get_contact_way?access_token=TOKEN
+   * 获取「联系我」配置（按 config_id 查询，返回 contact_way[0].qr_code）
+   * 注意：此接口为 POST，config_id 走 body
+   * POST /cgi-bin/externalcontact/get_contact_way?access_token=TOKEN
    */
   async getContactWay(accessToken: string, configId: string): Promise<any> {
-    return this.get(
-      `${WECOM_API_BASE}/externalcontact/get_contact_way?access_token=${accessToken}&config_id=${configId}`,
+    return this.post(
+      `${WECOM_API_BASE}/externalcontact/get_contact_way?access_token=${accessToken}`,
+      { config_id: configId },
     );
   }
 
