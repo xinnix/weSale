@@ -452,8 +452,13 @@ export class WechatKfService implements OnModuleDestroy {
       }
 
       if (serviceState === 0) {
-        await this.kfApiService.transKfServiceState(openKfId, externalUserId, 1);
-        this.logger.log(`会话已转为智能助手: externalUserId=${externalUserId}`);
+        // 转智能助手失败不阻断回复（send_msg 独立于会话状态）
+        try {
+          await this.kfApiService.transKfServiceState(openKfId, externalUserId, 1);
+          this.logger.log(`会话已转为智能助手: externalUserId=${externalUserId}`);
+        } catch (err: any) {
+          this.logger.warn(`转智能助手失败（不阻断回复）: ${err.message}`);
+        }
       }
 
       // 2. 加载会话上下文
@@ -499,7 +504,12 @@ export class WechatKfService implements OnModuleDestroy {
 
       // 5. 发送回复
       if (response.escalateToHuman) {
-        await this.kfApiService.transKfServiceState(openKfId, externalUserId, 3);
+        // 转人工状态变更失败不阻断回复发送
+        try {
+          await this.kfApiService.transKfServiceState(openKfId, externalUserId, 3);
+        } catch (err: any) {
+          this.logger.warn(`转人工状态变更失败（继续发消息）: ${err.message}`);
+        }
         await this.kfApiService.sendText(openKfId, externalUserId, response.reply);
         this.logger.log(`已转人工: externalUserId=${externalUserId}`);
         // 呼叫人工 → 推联系人名片引导添加企微（单会话一次）
