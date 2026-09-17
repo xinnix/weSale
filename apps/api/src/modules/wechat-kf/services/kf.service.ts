@@ -502,11 +502,17 @@ export class WechatKfService implements OnModuleDestroy {
         await this.kfApiService.transKfServiceState(openKfId, externalUserId, 3);
         await this.kfApiService.sendText(openKfId, externalUserId, response.reply);
         this.logger.log(`已转人工: externalUserId=${externalUserId}`);
+        // 呼叫人工 → 推联系人名片引导添加企微（单会话一次）
+        await this.maybeSendContactCard(openKfId, externalUserId, session);
       } else {
         await this.kfApiService.sendText(openKfId, externalUserId, response.reply);
         this.logger.log(
           `AI 回复已发送: to=${externalUserId}, state=${validatedState}, confidence=${response.confidence}`,
         );
+        // 超三轮 → 推联系人名片引导加企微（单会话一次）
+        if (session.turnCount >= 3) {
+          await this.maybeSendContactCard(openKfId, externalUserId, session);
+        }
       }
 
       // 6. 逼单转化：AI 建单（PENDING）→ 发小程序卡片 → 顾客进小程序支付
@@ -563,6 +569,52 @@ export class WechatKfService implements OnModuleDestroy {
       }
     } catch (error: any) {
       this.logger.error(`自动回复执行失败: to=${externalUserId}`, error);
+    }
+  }
+
+  /**
+   * F2 引导加企微：推送联系人名片（单会话一次，幂等）
+   * 触发：识别到呼叫人工（escalateToHuman）或对话超过三轮
+   * 名片指向的企微成员由 WX_WORK_CONTACT_CARD_USERID 配置
+   */
+  private async maybeSendContactCard(
+    openKfId: string,
+    externalUserId: string,
+    session: { id: string; contactId: string; turnCount: number },
+  ): Promise<void> {
+    try {
+      // 幂等：该会话已发过名片则跳过（宁少勿扰，PRD F2 单会话 ≤1 次）
+      const sent = await this.prisma.conversationMessage.findFirst({
+        where: { sessionId: session.id, type: 'BUSINESS_CARD', origin: 'SERVICER' },
+        select: { id: true },
+      });
+      if (sent) return;
+
+      const cardUserid = this.configService.get<string>('WX_WORK_CONTACT_CARD_USERID', '');
+      if (!cardUserid) {
+        this.logger.warn('未配置 WX_WORK_CONTACT_CARD_USERID，跳过联系人名片引导');
+        return;
+      }
+
+      await this.kfApiService.sendBusinessCard(openKfId, externalUserId, cardUserid);
+
+      // 持久化引导动作（幂等标记 + 会话审计）
+      await this.prisma.conversationMessage.create({
+        data: {
+          sessionId: session.id,
+          role: 'assistant',
+          type: 'BUSINESS_CARD',
+          origin: 'SERVICER',
+          content: '已推送企微联系人名片',
+          openKfId,
+          externalUserId,
+          sendTime: new Date(),
+          internalNote: `引导添加企微成员: ${cardUserid}`,
+        },
+      });
+      this.logger.log(`联系人名片已发送: to=${externalUserId}, card=${cardUserid}`);
+    } catch (err: any) {
+      this.logger.warn(`联系人名片发送失败: ${err.message}`);
     }
   }
 

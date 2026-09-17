@@ -77,6 +77,19 @@ export class WechatKfApiService {
   }
 
   /**
+   * 发送企业联系人名片（F2 引导加企微成员）
+   * 客户点击名片即可添加该企微成员
+   */
+  async sendBusinessCard(openKfId: string, externalUserId: string, userid: string): Promise<any> {
+    return this.sendKfMessage({
+      touser: externalUserId,
+      open_kfid: openKfId,
+      msgtype: 'business_card',
+      business_card: { userid },
+    });
+  }
+
+  /**
    * 发送小程序卡片消息
    * 官方文档要求 pagepath 以 .html 为后缀，否则在微信中打开提示找不到页面
    */
