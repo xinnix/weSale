@@ -211,6 +211,16 @@ export class WecomApiService {
   }
 
   /**
+   * 获取「联系我」二维码（按 config_id 查询，返回 contact_way[0].qr_code）
+   * GET /cgi-bin/externalcontact/get_contact_way?access_token=TOKEN
+   */
+  async getContactWay(accessToken: string, configId: string): Promise<any> {
+    return this.get(
+      `${WECOM_API_BASE}/externalcontact/get_contact_way?access_token=${accessToken}&config_id=${configId}`,
+    );
+  }
+
+  /**
    * 删除「联系我」活码配置（活码停用）
    * POST /cgi-bin/externalcontact/del_contact_way
    */

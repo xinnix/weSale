@@ -671,7 +671,8 @@ export class WechatKfService implements OnModuleDestroy {
       return { qrUrl: existing.qrUrl, state: existing.state };
     }
 
-    // 无活跃活码 → 调企微创建单人活码（state 归因到客服引导渠道）
+    // 无活跃活码 → 调企微创建单人活码
+    // 注意：add_contact_way 只返回 config_id，二维码需再调 get_contact_way 查询
     const state = `kf_${memberUserid.slice(0, 20)}`;
     const corpId = this.configService.get<string>('WX_WORK_CORP_ID', '');
     const secret = this.configService.get<string>('WX_WORK_SECRET', '');
@@ -683,20 +684,23 @@ export class WechatKfService implements OnModuleDestroy {
       state,
       remark: '客服名片引导（自动创建）',
     });
+    const detail = await this.wecomApiService.getContactWay(accessToken, created.config_id);
+    const qrUrl = detail?.contact_way?.[0]?.qr_code;
+    if (!qrUrl) throw new Error(`未获取到二维码 URL: ${JSON.stringify(detail).slice(0, 120)}`);
 
     await this.prisma.liveCode.create({
       data: {
         name: `客服名片-${memberUserid}`,
         state,
         contactWayConfigId: created.config_id,
-        qrUrl: created.qr_url,
+        qrUrl,
         memberUserids: [memberUserid],
         autoTags: [],
         status: 'ACTIVE',
       },
     });
 
-    return { qrUrl: created.qr_url, state };
+    return { qrUrl, state };
   }
 
   // ─── 工具方法 ───────────────────────────────────────────────
