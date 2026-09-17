@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import * as path from 'path';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { RedisService } from '../../../shared/services/redis.service';
+import { WecomApiService } from '../../wecom/services/wecom-api.service';
 import { WechatKfApiService } from './kf-api.service';
 import { SalesLlmService } from './sales-llm.service';
 import { OrderService } from '../../product/services/order.service';
@@ -79,6 +80,7 @@ export class WechatKfService implements OnModuleDestroy {
     private readonly redisService: RedisService,
     private readonly salesLlmService: SalesLlmService,
     private readonly orderService: OrderService,
+    private readonly wecomApiService: WecomApiService,
   ) {}
 
   onModuleDestroy() {
@@ -583,9 +585,12 @@ export class WechatKfService implements OnModuleDestroy {
   }
 
   /**
-   * F2 引导加企微：推送联系人名片（单会话一次，幂等）
+   * F2 引导加企微：推送员工的「联系我」二维码图片（单会话一次，幂等）
    * 触发：识别到呼叫人工（escalateToHuman）或对话超过三轮
-   * 名片指向的企微成员由 WX_WORK_CONTACT_CARD_USERID 配置
+   * 客户长按识别二维码 → 添加企微成员（state 归因到该成员）
+   *
+   * 注：微信客服 send_msg 不支持 business_card 类型（40008），
+   * 故采用 PRD F2 方案 B——活码二维码图片消息
    */
   private async maybeSendContactCard(
     openKfId: string,
@@ -593,39 +598,105 @@ export class WechatKfService implements OnModuleDestroy {
     session: { id: string; contactId: string; turnCount: number },
   ): Promise<void> {
     try {
-      // 幂等：该会话已发过名片则跳过（宁少勿扰，PRD F2 单会话 ≤1 次）
+      // 幂等：该会话已发过名片/二维码引导则跳过（宁少勿扰，PRD F2 单会话 ≤1 次）
       const sent = await this.prisma.conversationMessage.findFirst({
-        where: { sessionId: session.id, type: 'BUSINESS_CARD', origin: 'SERVICER' },
+        where: {
+          sessionId: session.id,
+          origin: 'SERVICER',
+          content: '已推送企微联系人二维码',
+        },
         select: { id: true },
       });
       if (sent) return;
 
-      const cardUserid = this.configService.get<string>('WX_WORK_CONTACT_CARD_USERID', '');
-      if (!cardUserid) {
-        this.logger.warn('未配置 WX_WORK_CONTACT_CARD_USERID，跳过联系人名片引导');
-        return;
-      }
+      // 名片指向的企微成员（ WX_WORK_CONTACT_CARD_USERID，默认 xinnix）
+      const cardUserid =
+        this.configService.get<string>('WX_WORK_CONTACT_CARD_USERID', '') || 'xinnix';
 
-      await this.kfApiService.sendBusinessCard(openKfId, externalUserId, cardUserid);
+      // 1. 取员工的「联系我」二维码（LiveCode 复用：按成员查活跃活码，无则创建）
+      const { qrUrl, state } = await this.resolveEmployeeContactWay(cardUserid);
+
+      // 2. 下载二维码 → 企微临时素材
+      const qrRes = await fetch(qrUrl);
+      if (!qrRes.ok) throw new Error(`二维码下载失败: HTTP ${qrRes.status}`);
+      const buffer = Buffer.from(await qrRes.arrayBuffer());
+      const mediaId = await this.kfApiService.uploadKfTempImage(buffer, 'contact-qr.png');
+
+      // 3. 发送图片消息（客户长按识别添加）
+      await this.kfApiService.sendKfMessage({
+        touser: externalUserId,
+        open_kfid: openKfId,
+        msgtype: 'image',
+        image: { media_id: mediaId },
+      });
 
       // 持久化引导动作（幂等标记 + 会话审计）
       await this.prisma.conversationMessage.create({
         data: {
           sessionId: session.id,
           role: 'assistant',
-          type: 'BUSINESS_CARD',
+          type: 'IMAGE',
           origin: 'SERVICER',
-          content: '已推送企微联系人名片',
+          content: '已推送企微联系人二维码',
           openKfId,
           externalUserId,
           sendTime: new Date(),
-          internalNote: `引导添加企微成员: ${cardUserid}`,
+          internalNote: `引导添加企微成员: ${cardUserid} (state=${state})`,
         },
       });
-      this.logger.log(`联系人名片已发送: to=${externalUserId}, card=${cardUserid}`);
+      this.logger.log(
+        `联系人二维码已发送: to=${externalUserId}, member=${cardUserid}, state=${state}`,
+      );
     } catch (err: any) {
-      this.logger.warn(`联系人名片发送失败: ${err.message}`);
+      this.logger.warn(`联系人二维码发送失败: ${err.message}`);
     }
+  }
+
+  /**
+   * 解析员工的「联系我」二维码 URL（LiveCode 复用：无活跃活码则调企微创建单人活码）
+   */
+  private async resolveEmployeeContactWay(memberUserid: string): Promise<{
+    qrUrl: string;
+    state: string;
+  }> {
+    // 查活跃活码（接待成员含该 userid）
+    const existing = await this.prisma.liveCode.findFirst({
+      where: {
+        status: 'ACTIVE',
+        memberUserids: { array_contains: [memberUserid] },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (existing?.qrUrl) {
+      return { qrUrl: existing.qrUrl, state: existing.state };
+    }
+
+    // 无活跃活码 → 调企微创建单人活码（state 归因到客服引导渠道）
+    const state = `kf_${memberUserid.slice(0, 20)}`;
+    const corpId = this.configService.get<string>('WX_WORK_CORP_ID', '');
+    const secret = this.configService.get<string>('WX_WORK_SECRET', '');
+    const accessToken = await this.wecomApiService.getAccessToken(corpId, secret);
+    const created = await this.wecomApiService.addContactWay(accessToken, {
+      type: 1, // 单人
+      scene: 2, // 二维码
+      user: [memberUserid],
+      state,
+      remark: '客服名片引导（自动创建）',
+    });
+
+    await this.prisma.liveCode.create({
+      data: {
+        name: `客服名片-${memberUserid}`,
+        state,
+        contactWayConfigId: created.config_id,
+        qrUrl: created.qr_url,
+        memberUserids: [memberUserid],
+        autoTags: [],
+        status: 'ACTIVE',
+      },
+    });
+
+    return { qrUrl: created.qr_url, state };
   }
 
   // ─── 工具方法 ───────────────────────────────────────────────
